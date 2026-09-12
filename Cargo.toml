@@ -1,0 +1,10 @@
+[workspace]
+members = ["crates/access-policy"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0-dev.1"
+edition = "2021"
+license = "AGPL-3.0-only"
+rust-version = "1.75"
+

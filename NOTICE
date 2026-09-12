@@ -1,0 +1,11 @@
+ZeroDisk (working name) remote-access project, initial development package, 2026.
+New source files in this package are provided under AGPL-3.0-only.
+
+Planned upstream: RustDesk, https://github.com/rustdesk/rustdesk
+Pinned client: 1.4.8 / 3c574a41821170f89f38141a493e127145dbf82d.
+RustDesk is a separate project. Its authorship and license notices must be preserved.
+This package does not include or claim ownership of the RustDesk source tree.
+The unmodified GNU AGPL text in LICENSE was retrieved from its LICENCE file.
+
+The unrelated disk sanitization project https://github.com/cumakurt/ZeroDisk
+already uses this name. No affiliation is claimed; public naming is unresolved.
