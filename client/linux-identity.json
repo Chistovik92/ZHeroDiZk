@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "profile": "zherodizk",
+  "display_name": "ZHeroDiZk",
+  "binary_name": "zherodizk",
+  "gtk_application_id": "io.github.chistovik92.zherodizk",
+  "changes": [
+    {
+      "path": "libs/hbb_common/src/config.rs",
+      "before": "pub static ref APP_NAME: RwLock<String> = RwLock::new(\"RustDesk\".to_owned());",
+      "after": "pub static ref APP_NAME: RwLock<String> = RwLock::new(\"ZHeroDiZk\".to_owned());"
+    },
+    {
+      "path": "flutter/linux/CMakeLists.txt",
+      "before": "set(BINARY_NAME \"rustdesk\")",
+      "after": "set(BINARY_NAME \"zherodizk\")"
+    },
+    {
+      "path": "flutter/linux/CMakeLists.txt",
+      "before": "set(APPLICATION_ID \"com.carriez.flutter_hbb\")",
+      "after": "set(APPLICATION_ID \"io.github.chistovik92.zherodizk\")"
+    },
+    {
+      "path": "src/core_main.rs",
+      "before": "        if args[0] == \"--version\" {",
+      "after": "        if args[0] == \"--zherodizk-identity\" {\n            println!(\"{}\", hbb_common::serde_json::json!({\n                \"app_name\": crate::get_app_name(),\n                \"config_file\": config::Config::file().display().to_string(),\n                \"log_dir\": config::Config::log_path().display().to_string(),\n                \"ipc_path\": config::Config::ipc_path(\"\"),\n            }));\n            return None;\n        }\n        if args[0] == \"--version\" {"
+    }
+  ]
+}

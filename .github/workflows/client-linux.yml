@@ -1,7 +1,14 @@
-name: Linux client baseline
+name: Linux client
 
 on:
   workflow_dispatch:
+  push:
+    branches: [codex/linux-client-identity]
+    paths:
+      - 'client/**'
+      - 'tools/prepare_client.py'
+      - 'tools/check_client_identity.py'
+      - '.github/workflows/client-linux.yml'
 
 permissions:
   contents: read
@@ -41,7 +48,7 @@ jobs:
       - name: Fetch and prepare pinned client
         run: |
           python3 tools/bootstrap.py --submodules
-          python3 tools/prepare_client.py vendor/client --report dist/build-report/source.json
+          python3 tools/prepare_client.py vendor/client --profile zherodizk --report dist/build-report/source.json
 
       - name: Install Rust
         run: |
@@ -129,7 +136,7 @@ jobs:
       - name: Assemble and check development bundle
         run: |
           bundle=vendor/client/flutter/build/linux/x64/release/bundle
-          test -x "$bundle/rustdesk"
+          test -x "$bundle/zherodizk"
           test -s "$bundle/lib/librustdesk.so"
           cp tools/doctor.py "$bundle/doctor.py"
           cp tools/launch_client.py "$bundle/zherodizk.py"
@@ -138,17 +145,19 @@ jobs:
           cp vendor/client/LICENCE "$bundle/RustDesk-LICENCE"
           cp docs/CLIENT-LINUX.md "$bundle/README-ZHeroDiZk.md"
           XDG_SESSION_TYPE=x11 xvfb-run -a python3 "$bundle/zherodizk.py" --doctor > dist/build-report/doctor.txt
-          ldd "$bundle/rustdesk" > dist/build-report/runner-libraries.txt
+          ldd "$bundle/zherodizk" > dist/build-report/runner-libraries.txt
           ldd "$bundle/lib/librustdesk.so" > dist/build-report/native-libraries.txt
           if grep -q 'not found' dist/build-report/*libraries.txt; then
             cat dist/build-report/*libraries.txt
             exit 1
           fi
-          timeout 30s "$bundle/rustdesk" --version > dist/build-report/client-version.txt
+          timeout 30s "$bundle/zherodizk" --version > dist/build-report/client-version.txt
           # The upstream runner can return zero even if dlopen fails.
           python3 -c 'import json,pathlib; expected=json.loads(pathlib.Path("upstream.lock.json").read_text())["client"]["tag"]; actual=pathlib.Path("dist/build-report/client-version.txt").read_text().strip(); assert actual == expected, (actual, expected)'
           cat dist/build-report/client-version.txt
-          sha256sum "$bundle/rustdesk" "$bundle/lib/librustdesk.so" > dist/build-report/binaries.sha256
+          timeout 30s "$bundle/zherodizk" --zherodizk-identity > dist/build-report/client-identity.json
+          python3 tools/check_client_identity.py dist/build-report/client-identity.json
+          sha256sum "$bundle/zherodizk" "$bundle/lib/librustdesk.so" > dist/build-report/binaries.sha256
           git -C vendor/client diff --stat > dist/build-report/upstream-changes.txt
           rustc --version > dist/build-report/rust-version.txt
           flutter --version > dist/build-report/flutter-version.txt
