@@ -2,12 +2,6 @@ name: Linux client baseline
 
 on:
   workflow_dispatch:
-  push:
-    branches: [codex/linux-client-build]
-    paths:
-      - '.github/workflows/client-linux.yml'
-      - 'tools/**'
-      - 'upstream.lock.json'
 
 permissions:
   contents: read
@@ -127,7 +121,7 @@ jobs:
       - name: Build Flutter GUI
         working-directory: vendor/client
         run: |
-          git -C "$FLUTTER_ROOT" apply "$PWD/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff"
+          python3 ../../tools/apply_patch_once.py "$FLUTTER_ROOT" .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
           cd flutter
           flutter pub get
           flutter build linux --release
@@ -151,6 +145,9 @@ jobs:
             exit 1
           fi
           timeout 30s "$bundle/rustdesk" --version > dist/build-report/client-version.txt
+          # The upstream runner can return zero even if dlopen fails.
+          python3 -c 'import json,pathlib; expected=json.loads(pathlib.Path("upstream.lock.json").read_text())["client"]["tag"]; actual=pathlib.Path("dist/build-report/client-version.txt").read_text().strip(); assert actual == expected, (actual, expected)'
+          cat dist/build-report/client-version.txt
           sha256sum "$bundle/rustdesk" "$bundle/lib/librustdesk.so" > dist/build-report/binaries.sha256
           git -C vendor/client diff --stat > dist/build-report/upstream-changes.txt
           rustc --version > dist/build-report/rust-version.txt

@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 from tools.launch_client import launch
 from tools import bootstrap, prepare_client
+from tools.apply_patch_once import apply_once
 
 
 class LauncherTests(unittest.TestCase):
@@ -95,3 +97,29 @@ class PreparationTests(unittest.TestCase):
         bootstrap.git(self.source, "submodule", "deinit", "--all")
         with self.assertRaisesRegex(ValueError, "submodules"):
             prepare_client.prepare(self.source)
+
+
+class CachedSdkPatchTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.sdk = self.root / "sdk"
+        self.sdk.mkdir()
+        bootstrap.git(self.sdk, "init")
+        self.source = self.sdk / "source.txt"
+        self.source.write_text("before\n")
+        self.patch = self.root / "fix.diff"
+        self.patch.write_text("--- a/source.txt\n+++ b/source.txt\n@@ -1 +1 @@\n-before\n+after\n")
+
+    def test_fresh_and_cached_sdk(self):
+        self.assertTrue(apply_once(self.sdk, self.patch))
+        self.assertEqual(self.source.read_text(), "after\n")
+        self.assertFalse(apply_once(self.sdk, self.patch))
+        self.assertEqual(self.source.read_text(), "after\n")
+
+    def test_conflict_fails_without_overwriting(self):
+        self.source.write_text("unrelated edit\n")
+        with self.assertRaises(subprocess.CalledProcessError):
+            apply_once(self.sdk, self.patch)
+        self.assertEqual(self.source.read_text(), "unrelated edit\n")
