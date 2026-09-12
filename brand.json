@@ -1,9 +1,9 @@
 {
-  "display_name": "ZeroDisk",
-  "candidate_name": "ZHeroDiZk",
-  "candidate_search_result": "no-exact-match-found-2026-09-12-not-trademark-clearance",
-  "status": "working-name-conflict-found",
-  "technical_namespace": "remote_platform",
+  "display_name": "ZHeroDiZk",
+  "technical_namespace": "zherodizk",
+  "repository_url": "https://github.com/Chistovik92/ZHeroDiZk",
+  "status": "selected-for-development",
+  "name_search_result": "no-exact-match-found-before-own-repository-2026-09-12-not-trademark-clearance",
   "public_release_allowed": false,
-  "conflict_url": "https://github.com/cumakurt/ZeroDisk"
+  "release_status": "development-only-no-client-binaries"
 }
