@@ -19,3 +19,16 @@ RustDesk 1.4.8 сохраняет собственную LICENCE и все ув�
 Источники:
 - https://github.com/rustdesk/rustdesk/blob/1.4.8/LICENCE
 - https://www.gnu.org/licenses/agpl-3.0.html
+
+## Проверка закреплённого подмодуля
+
+Клиент с SHA `3c574a41821170f89f38141a493e127145dbf82d` закрепляет
+`libs/hbb_common` на `387603f47cbb15c0d3dc3d67ae3396d3eb707daf`.
+На этой ревизии в корне отдельного репозитория hbb_common нет файла лицензии,
+а в Cargo.toml нет поля license/license-file. Это незакрытый пункт проверки:
+нельзя автоматически пометить компонент AGPL только из-за лицензии родителя.
+Перед распространением требуется установить применимые условия по исходникам
+и уведомлениям правообладателя. Полный аудит транзитивных зависимостей ещё впереди.
+
+- Дерево подмодуля: https://github.com/rustdesk/hbb_common/tree/387603f47cbb15c0d3dc3d67ae3396d3eb707daf
+- Метаданные: https://github.com/rustdesk/hbb_common/blob/387603f47cbb15c0d3dc3d67ae3396d3eb707daf/Cargo.toml

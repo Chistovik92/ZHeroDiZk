@@ -14,7 +14,7 @@
 
 ## Что реализовано
 
-- tools/doctor.py: диагностика Linux/X11, загрузка именно libxdo.so.3,
+- tools/doctor.py: диагностика Linux/X11, загрузка libxdo.so.4 / libxdo.so.3 / libxdo.so,
   проверка экспортируемых функций. Похожая libxdot.so.4 не принимается.
   Нативная библиотека проверяется в отдельном процессе с таймаутом.
 - tools/bootstrap.py: загрузка клиента RustDesk 1.4.8 по полному SHA,
@@ -22,7 +22,12 @@
 - crates/access-policy: Rust-библиотека правил доступа без внешних зависимостей;
   запрет по умолчанию, организации, привязка разрешения к оператору/устройству,
   сроки, отзыв, согласие, постоянный доступ и пересечение разрешений.
+- tools/prepare_client.py: проверка SHA/подмодулей и подготовка чистого checkout.
+- tools/launch_client.py: проверка среды до запуска экспериментального клиента.
+- Workflow Linux client baseline: сборка Rust/Flutter и отчёты о проверке.
 - Интеграционные Python-тесты, Rust-тесты и workflow GitHub Actions.
+
+Сборка Linux-клиента описана в [docs/CLIENT-LINUX.md](docs/CLIENT-LINUX.md).
 
 ## Быстрая проверка на Simply Linux
 
@@ -96,11 +101,10 @@ python3 tools/bootstrap.py --submodules
 - Нет готового EXE, APK, панели, API, базы данных, развёрнутого hbbs/hbbr.
 - Policy crate не встроен в клиент и НЕ защищает существующие сеансы RustDesk.
 - Нет проверки подписи токенов, выдачи разрешений, MFA или сетевого протокола.
-- 16 Python-тестов и 17 Rust-тестов прошли в GitHub Actions на исходной основе;
-  ссылка на проверенный запуск находится в docs/STATUS.md. Сборка клиента
-  RustDesk/Flutter и испытания удалённого доступа пока не выполнены.
-- Получение реального upstream через Git не подтверждено в этой среде;
-  checkout проверен на локальном тестовом репозитории.
+- 27 Python-тестов и 17 Rust-тестов прошли в GitHub Actions;
+  ссылки на проверенные коммиты и состояние сборки — в docs/STATUS.md.
+- Получение реального upstream с подмодулями проверено в CI.
+  Испытания удалённого доступа на реальном Simply ещё не выполнены.
 
 Подробности: docs/STATUS.md, docs/ARCHITECTURE.md, docs/ROADMAP.md,
 docs/NAME-CHECK.md, docs/SECURITY.md и docs/HANDOFF.md.
