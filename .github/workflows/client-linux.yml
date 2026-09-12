@@ -61,7 +61,22 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Restore generated bridge
+        id: bridge
+        uses: actions/cache/restore@v4
+        with:
+          # Bump v1 when bridge versions or generation commands change.
+          key: linux-bridge-v1-${{ hashFiles('upstream.lock.json') }}
+          path: |
+            vendor/client/src/bridge_generated.rs
+            vendor/client/src/bridge_generated.io.rs
+            vendor/client/flutter/lib/generated_bridge.dart
+            vendor/client/flutter/lib/generated_bridge.freezed.dart
+            vendor/client/flutter/macos/Runner/bridge_generated.h
+            vendor/client/flutter/ios/Runner/bridge_generated.h
+
       - name: Generate Rust Dart bridge
+        if: steps.bridge.outputs.cache-hit != 'true'
         working-directory: vendor/client
         run: |
           cargo install cargo-expand --version 1.0.95 --locked
@@ -74,12 +89,26 @@ jobs:
           cp flutter/macos/Runner/bridge_generated.h flutter/ios/Runner/bridge_generated.h
           git restore flutter/pubspec.yaml
 
+      - name: Save generated bridge
+        if: steps.bridge.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: linux-bridge-v1-${{ hashFiles('upstream.lock.json') }}
+          path: |
+            vendor/client/src/bridge_generated.rs
+            vendor/client/src/bridge_generated.io.rs
+            vendor/client/flutter/lib/generated_bridge.dart
+            vendor/client/flutter/lib/generated_bridge.freezed.dart
+            vendor/client/flutter/macos/Runner/bridge_generated.h
+            vendor/client/flutter/ios/Runner/bridge_generated.h
+
       - name: Install pinned vcpkg and codecs
         working-directory: vendor/client
         run: |
           git init "$VCPKG_ROOT"
           git -C "$VCPKG_ROOT" remote add origin https://github.com/microsoft/vcpkg.git
-          git -C "$VCPKG_ROOT" fetch --depth=1 origin 120deac3062162151622ca4860575a33844ba10b
+          # Port version overrides refer to older Git trees, requiring history.
+          git -C "$VCPKG_ROOT" fetch origin 120deac3062162151622ca4860575a33844ba10b
           git -C "$VCPKG_ROOT" checkout --detach FETCH_HEAD
           "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
           "$VCPKG_ROOT/vcpkg" install --triplet x64-linux --x-install-root="$VCPKG_ROOT/installed"
