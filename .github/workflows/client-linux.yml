@@ -42,7 +42,7 @@ jobs:
             libpam0g-dev libpulse-dev libva-dev libxcb-randr0-dev \
             libxcb-shape0-dev libxcb-xfixes0-dev libxdo-dev libxfixes-dev \
             llvm-dev nasm ninja-build pkg-config unzip xz-utils libssl-dev \
-            autoconf automake libtool python3 xvfb xauth
+            autoconf automake libtool python3 xvfb xauth libunwind-dev
 
       - name: Fetch and prepare pinned client
         run: |

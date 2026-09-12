@@ -6,7 +6,10 @@ import json
 import subprocess
 from pathlib import Path
 
-from bootstrap import ROOT, git, validate_lock
+if __package__:
+    from .bootstrap import ROOT, git, validate_lock
+else:
+    from bootstrap import ROOT, git, validate_lock
 
 
 def prepare(source):
