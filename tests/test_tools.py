@@ -17,7 +17,22 @@ class DoctorTests(unittest.TestCase):
             names.append(name)
             raise OSError("missing")
         self.assertFalse(doctor.probe_xdo(load)["ok"])
-        self.assertEqual(names, ["libxdo.so.3"])
+        self.assertEqual(names, ["libxdo.so.4", "libxdo.so.3", "libxdo.so"])
+
+    def test_falls_back_to_v3(self):
+        def load(name):
+            if name != "libxdo.so.3":
+                raise OSError("missing")
+            return SimpleNamespace(**{name: object() for name in doctor.SYMBOLS})
+        self.assertEqual(doctor.probe_xdo(load)["library"], "libxdo.so.3")
+
+    def test_broken_first_loaded_library_is_not_hidden(self):
+        names = []
+        def load(name):
+            names.append(name)
+            return SimpleNamespace()
+        self.assertFalse(doctor.probe_xdo(load)["ok"])
+        self.assertEqual(names, ["libxdo.so.4"])
 
     def test_library_must_export_mouse_functions(self):
         self.assertFalse(doctor.probe_xdo(lambda _: SimpleNamespace(xdo_new=1))["ok"])

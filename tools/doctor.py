@@ -11,17 +11,27 @@ import sys
 from pathlib import Path
 
 SYMBOLS = ("xdo_new", "xdo_free", "xdo_move_mouse", "xdo_mouse_down", "xdo_mouse_up")
+XDO_NAMES = ("libxdo.so.4", "libxdo.so.3", "libxdo.so")
 
 
 def probe_xdo(loader=ctypes.CDLL):
-    # Load the exact SONAME: libxdot.so.4 is NOT a valid replacement.
-    try:
-        library = loader("libxdo.so.3")
-        for symbol in SYMBOLS:
-            getattr(library, symbol)
-        return {"ok": True, "code": "xdo_loaded"}
-    except (OSError, AttributeError) as exc:
-        return {"ok": False, "code": "xdo_unavailable", "detail": str(exc)}
+    # Match the pinned upstream loader. libxdot is NOT libxdo.
+    errors = []
+    for name in XDO_NAMES:
+        try:
+            library = loader(name)
+        except OSError as exc:
+            errors.append(f"{name}: {exc}")
+            continue
+        try:
+            for symbol in SYMBOLS:
+                getattr(library, symbol)
+        except AttributeError as exc:
+            # Upstream uses the first library that dlopen accepts; do not
+            # approve a later library when that first one has a broken ABI.
+            return {"ok": False, "code": "xdo_unavailable", "detail": str(exc)}
+        return {"ok": True, "code": "xdo_loaded", "library": name}
+    return {"ok": False, "code": "xdo_unavailable", "detail": "; ".join(errors)}
 
 
 def isolated_probe():
@@ -53,9 +63,9 @@ def diagnose(system, session, display, uid, probe):
         else:
             add("display_set", "ok", "Переменная DISPLAY задана; доступ к X-серверу ещё не проверен.")
         if probe.get("ok"):
-            add("xdo_loaded", "ok", "libxdo.so.3 загружается, функции мыши найдены.")
+            add("xdo_loaded", "ok", "libxdo загружается, функции мыши найдены.")
         else:
-            add("xdo_unavailable", "error", "libxdo.so.3 не загружается или не содержит нужных функций. В Simply/ALT установите xdotool и перезапустите приложение.")
+            add("xdo_unavailable", "error", "libxdo не загружается или не содержит нужных функций. В Simply/ALT установите xdotool и перезапустите приложение. libxdot не подходит.")
     elif session == "wayland":
         add("wayland_unverified", "warning", "Wayland: требуется отдельная проверка разрешений захвата и ввода. Отсутствие libxdo здесь не считается ошибкой.")
     else:

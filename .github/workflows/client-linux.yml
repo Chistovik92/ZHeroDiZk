@@ -1,0 +1,139 @@
+name: Linux client baseline
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/linux-client-build]
+    paths:
+      - '.github/workflows/client-linux.yml'
+      - 'tools/**'
+      - 'upstream.lock.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-client-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_INCREMENTAL: '0'
+  CARGO_BUILD_JOBS: '2'
+  VCPKG_ROOT: ${{ github.workspace }}/vendor/vcpkg
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+
+      - name: Test project tools
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang cmake curl git \
+            libayatana-appindicator3-dev libasound2-dev libclang-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgtk-3-dev \
+            libpam0g-dev libpulse-dev libva-dev libxcb-randr0-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libxdo-dev libxfixes-dev \
+            llvm-dev nasm ninja-build pkg-config unzip xz-utils libssl-dev \
+            autoconf automake libtool python3 xvfb xauth
+
+      - name: Fetch and prepare pinned client
+        run: |
+          python3 tools/bootstrap.py --submodules
+          python3 tools/prepare_client.py vendor/client --report dist/build-report/source.json
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install 1.75.0 --profile minimal --component rustfmt
+          rustup default 1.75.0
+
+      - name: Install Flutter for bridge generation
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.22.3'
+          channel: stable
+          cache: true
+
+      - name: Generate Rust Dart bridge
+        working-directory: vendor/client
+        run: |
+          cargo install cargo-expand --version 1.0.95 --locked
+          cargo install flutter_rust_bridge_codegen --version 1.80.1 --features uuid --locked
+          sed -i 's/extended_text: 14.0.0/extended_text: 13.0.0/' flutter/pubspec.yaml
+          (cd flutter && flutter pub get)
+          flutter_rust_bridge_codegen --rust-input ./src/flutter_ffi.rs \
+            --dart-output ./flutter/lib/generated_bridge.dart \
+            --c-output ./flutter/macos/Runner/bridge_generated.h
+          cp flutter/macos/Runner/bridge_generated.h flutter/ios/Runner/bridge_generated.h
+          git restore flutter/pubspec.yaml
+
+      - name: Install pinned vcpkg and codecs
+        working-directory: vendor/client
+        run: |
+          git init "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" remote add origin https://github.com/microsoft/vcpkg.git
+          git -C "$VCPKG_ROOT" fetch --depth=1 origin 120deac3062162151622ca4860575a33844ba10b
+          git -C "$VCPKG_ROOT" checkout --detach FETCH_HEAD
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+          "$VCPKG_ROOT/vcpkg" install --triplet x64-linux --x-install-root="$VCPKG_ROOT/installed"
+
+      - name: Build native library
+        working-directory: vendor/client
+        run: cargo build --locked --lib --features hwcodec,flutter,unix-file-copy-paste --release
+
+      - name: Install Flutter for Linux GUI
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+
+      - name: Build Flutter GUI
+        working-directory: vendor/client
+        run: |
+          git -C "$FLUTTER_ROOT" apply "$PWD/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff"
+          cd flutter
+          flutter pub get
+          flutter build linux --release
+
+      - name: Assemble and check development bundle
+        run: |
+          bundle=vendor/client/flutter/build/linux/x64/release/bundle
+          test -x "$bundle/rustdesk"
+          test -s "$bundle/lib/librustdesk.so"
+          cp tools/doctor.py "$bundle/doctor.py"
+          cp tools/launch_client.py "$bundle/zherodizk.py"
+          cp LICENSE "$bundle/ZHeroDiZk-LICENSE"
+          cp NOTICE "$bundle/ZHeroDiZk-NOTICE"
+          cp vendor/client/LICENCE "$bundle/RustDesk-LICENCE"
+          cp docs/CLIENT-LINUX.md "$bundle/README-ZHeroDiZk.md"
+          XDG_SESSION_TYPE=x11 xvfb-run -a python3 "$bundle/zherodizk.py" --doctor > dist/build-report/doctor.txt
+          ldd "$bundle/rustdesk" > dist/build-report/runner-libraries.txt
+          ldd "$bundle/lib/librustdesk.so" > dist/build-report/native-libraries.txt
+          if grep -q 'not found' dist/build-report/*libraries.txt; then
+            cat dist/build-report/*libraries.txt
+            exit 1
+          fi
+          timeout 30s "$bundle/rustdesk" --version > dist/build-report/client-version.txt
+          sha256sum "$bundle/rustdesk" "$bundle/lib/librustdesk.so" > dist/build-report/binaries.sha256
+          git -C vendor/client diff --stat > dist/build-report/upstream-changes.txt
+          rustc --version > dist/build-report/rust-version.txt
+          flutter --version > dist/build-report/flutter-version.txt
+
+      # Only diagnostic evidence is uploaded. Executables stay on the runner
+      # until the project's source/license/security release gates are complete.
+      - name: Upload build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-client-build-evidence
+          path: dist/build-report/
+          if-no-files-found: warn
+          retention-days: 14
