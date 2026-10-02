@@ -154,18 +154,18 @@ class PreparationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "submodules"):
             prepare_client.prepare(self.source)
 
-    def identity_fixture(self):
-        manifest_path = Path(__file__).resolve().parents[1] / "client/linux-identity.json"
+    def identity_fixture(self, platform="linux"):
+        manifest_path = Path(__file__).resolve().parents[1] / "client" / f"{platform}-identity.json"
         manifest = json.loads(manifest_path.read_text())
-        (self.root / "client").mkdir()
-        (self.root / "client/linux-identity.json").write_text(json.dumps(manifest))
+        (self.root / "client").mkdir(exist_ok=True)
+        (self.root / "client" / f"{platform}-identity.json").write_text(json.dumps(manifest), encoding="utf-8")
         contents = {}
         for change in manifest["changes"]:
             contents.setdefault(change["path"], []).append(change["before"])
         for name, fragments in contents.items():
             target = self.source / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text("\n".join(fragments) + "\n")
+            target.write_text("\n".join(fragments) + "\n", encoding="utf-8")
         self.commit(self.source)
         lock_path = self.root / "upstream.lock.json"
         lock = json.loads(lock_path.read_text())
@@ -184,6 +184,18 @@ class PreparationTests(unittest.TestCase):
         self.assertIn('set(BINARY_NAME "zherodizk")', cmake)
         self.assertIn('"io.github.chistovik92.zherodizk"', cmake)
         self.assertEqual((self.source / "LICENCE").read_text(), "test fixture")
+
+    def test_windows_identity_leaves_cargo_untouched(self):
+        self.identity_fixture("windows")
+        report = prepare_client.prepare(self.source, "zherodizk", "windows")
+        self.assertEqual(report["platform"], "windows")
+        self.assertEqual(report["adjustments"], [])
+        self.assertNotIn("Cargo.toml", report["changed_files"])
+        cmake = (self.source / "flutter/windows/CMakeLists.txt").read_text(encoding="utf-8")
+        self.assertIn('set(BINARY_NAME "zherodizk")', cmake)
+        rc = (self.source / "flutter/windows/runner/Runner.rc").read_text(encoding="utf-8")
+        self.assertIn('"ProductName", "ZHeroDiZk"', rc)
+        self.assertNotIn("Purslane", rc)
 
     def test_identity_mismatch_does_not_partially_patch_cargo(self):
         self.identity_fixture()

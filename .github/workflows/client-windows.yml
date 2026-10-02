@@ -7,6 +7,8 @@ on:
     paths:
       - '.github/workflows/client-windows.yml'
       - 'tools/prepare_client.py'
+      - 'tools/check_windows_identity.py'
+      - 'client/windows-identity.json'
 
 permissions:
   contents: read
@@ -36,7 +38,7 @@ jobs:
       - name: Fetch and prepare pinned client
         run: |
           python3 tools/bootstrap.py --submodules
-          python3 tools/prepare_client.py vendor/client --report dist/source.json
+          python3 tools/prepare_client.py vendor/client --profile zherodizk --platform windows --report dist/source.json
 
       - name: Install Rust
         run: |
@@ -93,7 +95,7 @@ jobs:
       - name: Fetch and prepare pinned client
         run: |
           python tools/bootstrap.py --submodules
-          python tools/prepare_client.py vendor/client --report dist/build-report/source.json
+          python tools/prepare_client.py vendor/client --profile zherodizk --platform windows --report dist/build-report/source.json
 
       - name: Restore generated bridge
         uses: actions/download-artifact@v4
@@ -148,13 +150,16 @@ jobs:
         working-directory: vendor/client
         run: python build.py --portable --flutter --skip-portable-pack --hwcodec
 
-      - name: Check build output
+      - name: Check build output and identity
         run: |
           out=vendor/client/flutter/build/windows/x64/runner/Release
           ls -l "$out"
-          test -s "$out/rustdesk.exe"
+          test -s "$out/zherodizk.exe"
           test -s "$out/librustdesk.dll"
-          sha256sum "$out/rustdesk.exe" "$out/librustdesk.dll" > dist/build-report/binaries.sha256
+          powershell -NoProfile -Command "(Get-Item '$out/zherodizk.exe').VersionInfo | Select-Object ProductName,InternalName,OriginalFilename,CompanyName,FileDescription,LegalCopyright | ConvertTo-Json" > dist/build-report/version-info.json
+          cat dist/build-report/version-info.json
+          python tools/check_windows_identity.py dist/build-report/version-info.json "$out"
+          sha256sum "$out/zherodizk.exe" "$out/librustdesk.dll" > dist/build-report/binaries.sha256
           git -C vendor/client diff --stat > dist/build-report/upstream-changes.txt
           rustc --version > dist/build-report/rust-version.txt
           flutter --version > dist/build-report/flutter-version.txt
