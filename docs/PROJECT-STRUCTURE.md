@@ -15,9 +15,15 @@ ZHeroDiZk/
 ├── .gitattributes          окончания строк LF во всём репозитории
 ├── .github/workflows/
 │   ├── checks.yml          проверки на каждый push/PR: Python-тесты, lock, Rust-тесты
-│   └── client-linux.yml    полная сборка Linux-клиента (запуск вручную)
+│   ├── client-linux.yml    полная сборка Linux-клиента (запуск вручную)
+│   ├── client-windows.yml  сборка Windows-клиента (вручную и на ветке claude/windows-client)
+│   └── server-linux.yml    сборка, пакеты и установочные тесты сервера
 ├── client/
-│   └── linux-identity.json манифест замен идентичности Linux-клиента
+│   ├── linux-identity.json   манифест замен идентичности Linux-клиента
+│   └── windows-identity.json манифест замен идентичности Windows-клиента
+├── server/
+│   └── identity.json         манифест замен идентичности серверной части
+├── packaging/              пакеты сервера: systemd, deb, rpm, Docker, скрипты сборки
 ├── crates/
 │   └── access-policy/      Rust-библиотека правил доступа (zherodizk-access-policy)
 ├── tools/                  служебные скрипты (Python, только stdlib)
@@ -25,10 +31,12 @@ ZHeroDiZk/
 │   ├── bootstrap.py        получение закреплённого исходного клиента в НОВЫЙ каталог
 │   ├── prepare_client.py   проверка чистоты и подготовка checkout к сборке
 │   ├── apply_patch_once.py идемпотентное применение патча к Flutter SDK
+│   ├── prepare_server.py   проверка и подготовка серверных исходников
+│   ├── check_windows_identity.py  проверка идентичности Windows по собранным файлам
 │   ├── sbom.py             SBOM (CycloneDX) и сводка лицензий
 │   ├── check_client_identity.py  проверка идентичности по выводу собранного клиента
 │   └── launch_client.py    запуск клиента с предварительной диагностикой
-├── tests/                  Python-тесты (44): инструменты, подготовка клиента, launcher
+├── tests/                  Python-тесты: инструменты, подготовка клиента, launcher
 └── docs/                   документация (см. README)
 ```
 
@@ -40,10 +48,8 @@ ZHeroDiZk/
 | Каталог | Этап | Назначение |
 |---|---|---|
 | `client/` (расширение) | 0.2.0+ | собственные патчи и ресурсы клиента по платформам |
-| `server/relay/` | 0.3.0 | сервер встреч и ретрансляции |
-| `server/control/` | 0.4.0 | сервер управления, API, миграции БД |
+| `server/control/` (рядом с `identity.json`) | 0.4.0 | сервер управления, API, миграции БД |
 | `panel/` | 0.6.0 | веб-панель (TypeScript/React) |
-| `packaging/` | 0.3.0+ | deb, rpm, apk, PKGBUILD, Docker, systemd |
 | `mobile/` | 0.7.0+ | Android и iOS |
 
 ## Как связаны части

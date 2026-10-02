@@ -3,6 +3,16 @@
 Автор: SecretHero. Формат версий — [docs/VERSIONING.md](docs/VERSIONING.md).
 Выпущены пре-релизы v0.1.1–v0.1.5 (только исходный код): https://github.com/Chistovik92/ZHeroDiZk/releases
 
+## 0.3.x — не выпущено (в разработке, проверено в CI)
+
+- 0.3.1–0.3.2: закреплённые серверные исходники, `bootstrap.py --component server`,
+  `prepare_server.py`, `server/identity.json`; бинарники `zhd-rendezvous`, `zhd-relay`,
+  `zhd-utils`; удалена проверка обновлений на стороннем сервере; статические musl-сборки.
+- 0.3.3–0.3.4: пакеты deb/rpm/tarball, юниты systemd (ограничения, UMask 0077), Docker и Compose,
+  установочные тесты на 8 дистрибутивах.
+- 0.2.2 (часть): профиль Windows-идентичности (`client/windows-identity.json`,
+  `tools/check_windows_identity.py`); сборка Windows ещё не подтверждена.
+
 ## 0.1.5 — выпущено (v0.1.5)
 
 - `tools/sbom.py`: CycloneDX 1.5 по `cargo metadata` и `pubspec.lock`; лицензии Dart

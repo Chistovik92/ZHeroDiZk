@@ -18,13 +18,13 @@ Flutter-интерфейс не означает одинаковый удалё
 
 ## Серверы (Linux)
 
-| ОС | Способ установки (план 0.3.0) | Сейчас |
+| ОС | Способ установки | Проверено |
 |---|---|---|
-| Debian / Ubuntu | `.deb`, Docker | нет |
-| ALT Linux / Simply | `.rpm`, Docker | нет |
-| RHEL / Alma / Rocky | `.rpm`, Docker | нет |
-| Alpine | apk, статический бинарник | нет |
-| Arch | PKGBUILD | нет |
-| Любой Linux x86_64/aarch64 | статический musl-бинарник, Docker Compose | нет |
+| Debian / Ubuntu | `.deb`, Docker | ✅ Debian 12, Ubuntu 22.04/24.04 (CI) |
+| ALT Linux / Simply | `.rpm`, Docker | ✅ ALT p10/p11, минимальные образы (CI) |
+| RHEL / Alma / Rocky | `.rpm`, Docker | ✅ Rocky 9, Alma 9, Fedora 41 (CI) |
+| Alpine | статический бинарник (tarball); пакет apk — позже | ✅ tarball (CI) |
+| Arch | PKGBUILD | ⬜ не создан |
+| Любой Linux x86_64/aarch64 | статический musl-бинарник, Docker Compose | ✅ x86_64; aarch64 собирается, запуск не проверялся |
 
 Windows-сервер не планируется.
