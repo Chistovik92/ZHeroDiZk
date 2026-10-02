@@ -142,7 +142,7 @@ jobs:
           cp tools/launch_client.py "$bundle/zherodizk.py"
           cp LICENSE "$bundle/ZHeroDiZk-LICENSE"
           cp NOTICE "$bundle/ZHeroDiZk-NOTICE"
-          cp vendor/client/LICENCE "$bundle/RustDesk-LICENCE"
+          cp vendor/client/LICENCE "$bundle/THIRD-PARTY-LICENCE"
           cp docs/CLIENT-LINUX.md "$bundle/README-ZHeroDiZk.md"
           XDG_SESSION_TYPE=x11 xvfb-run -a python3 "$bundle/zherodizk.py" --doctor > dist/build-report/doctor.txt
           ldd "$bundle/zherodizk" > dist/build-report/runner-libraries.txt

@@ -12,11 +12,22 @@ else:
     from bootstrap import ROOT, git, validate_lock
 
 
+def read_source(path):
+    # newline="" keeps upstream line endings byte-for-byte on every OS.
+    with open(path, encoding="utf-8", newline="") as handle:
+        return handle.read()
+
+
+def write_source(path, text):
+    with open(path, "w", encoding="utf-8", newline="") as handle:
+        handle.write(text)
+
+
 def prepare(source, profile="baseline"):
     if profile not in ("baseline", "zherodizk"):
         raise ValueError("Unknown client profile")
     source = source.resolve()
-    client = validate_lock(json.loads((ROOT / "upstream.lock.json").read_text()))
+    client = validate_lock(json.loads((ROOT / "upstream.lock.json").read_text(encoding="utf-8")))
     if git(source, "rev-parse", "HEAD") != client["commit"]:
         raise ValueError("Source does not match upstream.lock.json")
     if git(source, "status", "--porcelain"):
@@ -25,14 +36,14 @@ def prepare(source, profile="baseline"):
     if not submodules or any(line.startswith(("-", "+", "U")) for line in submodules.splitlines()):
         raise ValueError("Pinned submodules must be initialized without changes")
     cargo = source / "Cargo.toml"
-    original = cargo.read_text()
+    original = read_source(cargo)
     needle = '["cdylib", "staticlib", "rlib"]'
     if original.count(needle) != 1:
         raise ValueError("Upstream Cargo layout changed; review the build adjustment")
     pending = {cargo: original.replace(needle, '["cdylib"]')}
     identity = None
     if profile == "zherodizk":
-        identity = json.loads((ROOT / "client/linux-identity.json").read_text())
+        identity = json.loads((ROOT / "client/linux-identity.json").read_text(encoding="utf-8"))
         if identity.get("schema_version") != 1 or identity.get("profile") != profile:
             raise ValueError("Unsupported identity manifest")
         for change in identity["changes"]:
@@ -41,14 +52,21 @@ def prepare(source, profile="baseline"):
                 raise ValueError("Identity change escapes source checkout")
             content = pending.get(path)
             if content is None:
-                content = path.read_text()
+                content = read_source(path)
             if content.count(change["before"]) != 1:
                 raise ValueError(f"Upstream identity layout changed: {change['path']}")
             pending[path] = content.replace(change["before"], change["after"])
-    # Validate every expected source fragment before writing any changes.
-    # An I/O failure can still leave a partial checkout; start a new one then.
-    for path, content in pending.items():
-        path.write_text(content)
+    # Every expected source fragment is validated above before anything is written.
+    # If a write still fails, restore the files already changed.
+    originals = {}
+    try:
+        for path, content in pending.items():
+            originals[path] = read_source(path)
+            write_source(path, content)
+    except OSError:
+        for path, text in originals.items():
+            write_source(path, text)
+        raise
     return {"upstream": client, "submodules": submodules,
             "adjustments": ["Build cdylib only, matching upstream Linux CI"],
             "profile": profile,

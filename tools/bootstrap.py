@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: AGPL-3.0-only
-"""Fetch pinned RustDesk source into a NEW directory; never update an existing tree."""
+"""Fetch pinned upstream client source into a NEW directory; never update an existing tree."""
 import argparse
 import json
 import re
@@ -53,7 +53,7 @@ def main(argv=None):
     parser.add_argument("--check-lock", action="store_true")
     args = parser.parse_args(argv)
     try:
-        client = validate_lock(json.loads((ROOT / "upstream.lock.json").read_text()))
+        client = validate_lock(json.loads((ROOT / "upstream.lock.json").read_text(encoding="utf-8")))
         if args.check_lock:
             print(json.dumps(client, indent=2))
             return 0

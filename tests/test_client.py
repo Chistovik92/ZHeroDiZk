@@ -115,6 +115,34 @@ class PreparationTests(unittest.TestCase):
             prepare_client.prepare(self.source)
         self.assertEqual(cargo.read_text(), "user changes")
 
+    def test_preserves_crlf_line_endings(self):
+        bootstrap.git(self.source, "config", "core.autocrlf", "false")
+        cargo = self.source / "Cargo.toml"
+        cargo.write_bytes(b'crate-type = ["cdylib", "staticlib", "rlib"]\r\n')
+        self.commit(self.source)
+        lock_path = self.root / "upstream.lock.json"
+        lock = json.loads(lock_path.read_text())
+        lock["client"]["commit"] = bootstrap.git(self.source, "rev-parse", "HEAD")
+        lock_path.write_text(json.dumps(lock))
+        prepare_client.prepare(self.source)
+        self.assertEqual(cargo.read_bytes(), b'crate-type = ["cdylib"]\r\n')
+
+    def test_write_failure_restores_changed_files(self):
+        self.identity_fixture()
+        real_write = prepare_client.write_source
+        calls = []
+
+        def flaky(path, text):
+            calls.append(path)
+            if len(calls) == 2:
+                raise OSError("disk full")
+            real_write(path, text)
+
+        with patch.object(prepare_client, "write_source", flaky):
+            with self.assertRaises(OSError):
+                prepare_client.prepare(self.source, "zherodizk")
+        self.assertEqual(bootstrap.git(self.source, "status", "--porcelain"), "")
+
     def test_rejects_wrong_commit(self):
         (self.source / "new-file").write_text("changed revision")
         self.commit(self.source)

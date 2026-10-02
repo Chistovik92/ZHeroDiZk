@@ -26,7 +26,7 @@ def launch(argv=None, bundle=None, check=None, execute=None):
     if not binary.is_file():
         print(f"Не найден клиент: {binary}", file=sys.stderr)
         return 2
-    print("ZHeroDiZk: экспериментальная сборка на базе RustDesk; собственные правила доступа ещё не подключены.", flush=True)
+    print("ZHeroDiZk: экспериментальная сборка; собственные правила доступа ещё не подключены.", flush=True)
     sys.stdout.flush()
     sys.stderr.flush()
     try:

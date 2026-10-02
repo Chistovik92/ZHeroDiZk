@@ -23,7 +23,7 @@ def validate(report):
 
 if __name__ == "__main__":
     try:
-        report = validate(json.loads(Path(sys.argv[1]).read_text()))
+        report = validate(json.loads(Path(sys.argv[1]).read_text(encoding="utf-8")))
         print(json.dumps(report, ensure_ascii=False, indent=2))
     except (OSError, ValueError, KeyError, TypeError, IndexError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
