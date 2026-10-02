@@ -111,8 +111,9 @@ jobs:
           cp "$out"/zhd-rendezvous "$out"/zhd-relay "$out"/zhd-utils LICENSE NOTICE "tarball/zherodizk-server-$version-$tar_arch/"
           tar -C tarball -czf "pkgs/zherodizk-server-$version-linux-$tar_arch.tar.gz" "zherodizk-server-$version-$tar_arch"
           find pkgs -type f -name '*.rpm' -exec mv {} pkgs/ \; 2>/dev/null || true
+          find pkgs -mindepth 1 -type d -empty -delete
           ls -l pkgs
-          (cd pkgs && sha256sum * > "$GITHUB_WORKSPACE/dist/build-report/packages.sha256")
+          (cd pkgs && sha256sum -- *.deb *.rpm *.tar.gz > "$GITHUB_WORKSPACE/dist/build-report/packages.sha256")
           cat dist/build-report/packages.sha256
           dpkg-deb --info pkgs/*.deb | tee dist/build-report/deb-info.txt
           dpkg-deb --contents pkgs/*.deb | tee dist/build-report/deb-contents.txt
