@@ -22,6 +22,17 @@ def validate_lock(lock):
     return client
 
 
+def validate_server_lock(lock):
+    server = lock["server"]
+    if lock.get("schema_version") != 1:
+        raise ValueError("Unsupported lock schema")
+    if server["url"] != "https://github.com/rustdesk/rustdesk-server.git":
+        raise ValueError("Unexpected upstream URL")
+    if not re.fullmatch(r"[0-9a-f]{40}", server["commit"]):
+        raise ValueError("Expected full immutable commit SHA")
+    return server
+
+
 def git(destination, *args):
     return subprocess.run(["git", "-C", str(destination), *args], check=True,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -39,7 +50,7 @@ def checkout(client, destination, submodules=False):
     actual = git(destination, "rev-parse", "HEAD")
     if actual != client["commit"]:
         raise RuntimeError("Upstream commit mismatch")
-    if not (destination / "LICENCE").is_file():
+    if not (destination / client.get("license_file", "LICENCE")).is_file():
         raise RuntimeError("Upstream license missing")
     if submodules:
         git(destination, "submodule", "update", "--init", "--recursive")
@@ -48,17 +59,24 @@ def checkout(client, destination, submodules=False):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--destination", type=Path, default=ROOT / "vendor/client")
+    parser.add_argument("--component", choices=("client", "server"), default="client")
+    parser.add_argument("--destination", type=Path, default=None)
     parser.add_argument("--submodules", action="store_true")
     parser.add_argument("--check-lock", action="store_true")
     args = parser.parse_args(argv)
     try:
-        client = validate_lock(json.loads((ROOT / "upstream.lock.json").read_text(encoding="utf-8")))
+        lock = json.loads((ROOT / "upstream.lock.json").read_text(encoding="utf-8"))
+        client = validate_lock(lock)
+        server = validate_server_lock(lock) if "server" in lock else None
         if args.check_lock:
-            print(json.dumps(client, indent=2))
+            print(json.dumps({"client": client, "server": server}, indent=2))
             return 0
-        sha = checkout(client, args.destination, args.submodules)
-        print(f"Checked out {sha} into {args.destination}")
+        if args.component == "server" and server is None:
+            raise ValueError("No server entry in upstream.lock.json")
+        component = client if args.component == "client" else server
+        destination = args.destination or ROOT / "vendor" / args.component
+        sha = checkout(component, destination, args.submodules)
+        print(f"Checked out {sha} into {destination}")
         if not args.submodules:
             print("Submodules not downloaded; build requires --submodules in a new destination.")
         print("This is unmodified upstream source, not a branded client build.")

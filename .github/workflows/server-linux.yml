@@ -1,0 +1,81 @@
+name: Linux server
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/server-linux']
+    paths:
+      - '.github/workflows/server-linux.yml'
+      - 'tools/bootstrap.py'
+      - 'upstream.lock.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-server-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: '1.90.0'
+  CROSS_VERSION: '0.2.5'
+
+# Verification build of the pinned rendezvous/relay server sources.
+# Binaries are built as static musl executables for each target (as the pinned
+# upstream CI does) and only checksums are published as evidence.
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64-unknown-linux-musl, aarch64-unknown-linux-musl]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+
+      - name: Test project tools
+        run: python3 -m unittest discover -s tests
+
+      - name: Fetch pinned server sources
+        run: python3 tools/bootstrap.py --component server --submodules
+
+      - name: Install Rust and cross
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal --target ${{ matrix.target }}
+          rustup default "$RUST_VERSION"
+          cargo install cross --version "$CROSS_VERSION" --locked
+
+      - name: Build server binaries
+        working-directory: vendor/server
+        run: cross build --release --all-features --target ${{ matrix.target }}
+
+      - name: Check binaries and write evidence
+        run: |
+          out=vendor/server/target/${{ matrix.target }}/release
+          mkdir -p dist/build-report
+          for bin in hbbs hbbr; do
+            test -x "$out/$bin"
+            file "$out/$bin" | tee -a dist/build-report/file-types.txt
+          done
+          sha256sum "$out/hbbs" "$out/hbbr" > dist/build-report/binaries.sha256
+          cat dist/build-report/binaries.sha256
+          git -C vendor/server rev-parse HEAD > dist/build-report/server-commit.txt
+          git -C vendor/server submodule status --recursive > dist/build-report/server-submodules.txt
+          # Static musl build: no dynamic section expected for x86_64.
+          if [ "${{ matrix.target }}" = x86_64-unknown-linux-musl ]; then
+            "$out/hbbs" --help > dist/build-report/hbbs-help.txt 2>&1 || true
+            head -5 dist/build-report/hbbs-help.txt
+          fi
+
+      - name: Upload build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-build-evidence-${{ matrix.target }}
+          path: dist/build-report/
+          if-no-files-found: warn
+          retention-days: 14
