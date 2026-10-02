@@ -23,6 +23,35 @@ def write_source(path, text):
         handle.write(text)
 
 
+def collect_changes(source, manifest, pending):
+    """Validate every manifest change against the files and queue the new text."""
+    source = Path(source).resolve()
+    for change in manifest["changes"]:
+        path = (source / change["path"]).resolve()
+        if not path.is_relative_to(source) or path == source:
+            raise ValueError("Identity change escapes source checkout")
+        content = pending.get(path)
+        if content is None:
+            content = read_source(path)
+        if content.count(change["before"]) != 1:
+            raise ValueError(f"Upstream identity layout changed: {change['path']}")
+        pending[path] = content.replace(change["before"], change["after"])
+
+
+def write_pending(pending):
+    # Every expected source fragment is validated before anything is written.
+    # If a write still fails, restore the files already changed.
+    originals = {}
+    try:
+        for path, content in pending.items():
+            originals[path] = read_source(path)
+            write_source(path, content)
+    except OSError:
+        for path, text in originals.items():
+            write_source(path, text)
+        raise
+
+
 def prepare(source, profile="baseline", platform="linux"):
     if profile not in ("baseline", "zherodizk"):
         raise ValueError("Unknown client profile")
@@ -52,27 +81,8 @@ def prepare(source, profile="baseline", platform="linux"):
         identity = json.loads((ROOT / "client" / f"{platform}-identity.json").read_text(encoding="utf-8"))
         if identity.get("schema_version") != 1 or identity.get("profile") != profile:
             raise ValueError("Unsupported identity manifest")
-        for change in identity["changes"]:
-            path = (source / change["path"]).resolve()
-            if not path.is_relative_to(source) or path == source:
-                raise ValueError("Identity change escapes source checkout")
-            content = pending.get(path)
-            if content is None:
-                content = read_source(path)
-            if content.count(change["before"]) != 1:
-                raise ValueError(f"Upstream identity layout changed: {change['path']}")
-            pending[path] = content.replace(change["before"], change["after"])
-    # Every expected source fragment is validated above before anything is written.
-    # If a write still fails, restore the files already changed.
-    originals = {}
-    try:
-        for path, content in pending.items():
-            originals[path] = read_source(path)
-            write_source(path, content)
-    except OSError:
-        for path, text in originals.items():
-            write_source(path, text)
-        raise
+        collect_changes(source, identity, pending)
+    write_pending(pending)
     return {"upstream": client, "submodules": submodules,
             "adjustments": adjustments, "platform": platform,
             "profile": profile,
@@ -92,7 +102,7 @@ def main():
     try:
         report = prepare(args.source, args.profile, args.platform)
         args.report.parent.mkdir(parents=True, exist_ok=True)
-        args.report.write_text(json.dumps(report, indent=2) + "\n")
+        args.report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         return 0
     except (OSError, ValueError, subprocess.SubprocessError) as exc:
         print(f"ERROR: {exc}")

@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "profile": "zherodizk",
+  "component": "server",
+  "binaries": {
+    "rendezvous": "zhd-rendezvous",
+    "relay": "zhd-relay",
+    "utils": "zhd-utils"
+  },
+  "changes": [
+    {
+      "path": "Cargo.toml",
+      "before": "authors = [\"rustdesk <info@rustdesk.com>\"]",
+      "after": "authors = [\"SecretHero\"]"
+    },
+    {
+      "path": "Cargo.toml",
+      "before": "default-run = \"hbbs\"\n\n[[bin]]\nname = \"hbbr\"\npath = \"src/hbbr.rs\"\n\n[[bin]]\nname = \"rustdesk-utils\"\npath = \"src/utils.rs\"",
+      "after": "autobins = false\ndefault-run = \"zhd-rendezvous\"\n\n[[bin]]\nname = \"zhd-rendezvous\"\npath = \"src/main.rs\"\n\n[[bin]]\nname = \"zhd-relay\"\npath = \"src/hbbr.rs\"\n\n[[bin]]\nname = \"zhd-utils\"\npath = \"src/utils.rs\""
+    },
+    {
+      "path": "src/common.rs",
+      "before": ".author(\"Purslane Ltd. <info@rustdesk.com>\")",
+      "after": ".author(\"SecretHero\")"
+    },
+    {
+      "path": "src/hbbr.rs",
+      "before": ".author(\"Purslane Ltd. <info@rustdesk.com>\")",
+      "after": ".author(\"SecretHero\")"
+    },
+    {
+      "path": "src/hbbr.rs",
+      "before": "App::new(\"hbbr\")",
+      "after": "App::new(\"zhd-relay\")"
+    },
+    {
+      "path": "src/hbbr.rs",
+      "before": ".about(\"RustDesk Relay Server\")",
+      "after": ".about(\"ZHeroDiZk Relay Server\")"
+    },
+    {
+      "path": "src/main.rs",
+      "before": "'Sets download url of RustDesk software of newest version'",
+      "after": "'Sets download url of the newest client version'"
+    },
+    {
+      "path": "src/main.rs",
+      "before": "init_args(&args, \"hbbs\", \"RustDesk ID/Rendezvous Server\");",
+      "after": "init_args(&args, \"zhd-rendezvous\", \"ZHeroDiZk Rendezvous Server\");"
+    },
+    {
+      "path": "src/main.rs",
+      "before": "    crate::common::check_software_update();\n",
+      "after": "    // Update checks against third-party servers are intentionally disabled.\n"
+    },
+    {
+      "path": "src/utils.rs",
+      "before": "    rustdesk-utils [command]",
+      "after": "    zhd-utils [command]"
+    },
+    {
+      "path": "src/utils.rs",
+      "before": "doctor [rustdesk-server]    ",
+      "after": "doctor [server-address]      "
+    },
+    {
+      "path": "src/utils.rs",
+      "before": "You must supply the rustdesk-server address",
+      "after": "You must supply the server address"
+    },
+    {
+      "path": "src/utils.rs",
+      "before": "\"21115\", \"hbbs extra port for nat test\"",
+      "after": "\"21115\", \"rendezvous extra port for nat test\""
+    },
+    {
+      "path": "src/utils.rs",
+      "before": "\"21116\", \"hbbs\"",
+      "after": "\"21116\", \"rendezvous\""
+    },
+    {
+      "path": "src/utils.rs",
+      "before": "\"21117\", \"hbbr tcp\"",
+      "after": "\"21117\", \"relay tcp\""
+    },
+    {
+      "path": "src/utils.rs",
+      "before": "\"21118\", \"hbbs websocket\"",
+      "after": "\"21118\", \"rendezvous websocket\""
+    },
+    {
+      "path": "src/utils.rs",
+      "before": "\"21119\", \"hbbr websocket\"",
+      "after": "\"21119\", \"relay websocket\""
+    }
+  ]
+}

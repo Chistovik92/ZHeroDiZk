@@ -7,6 +7,8 @@ on:
     paths:
       - '.github/workflows/server-linux.yml'
       - 'tools/bootstrap.py'
+      - 'tools/prepare_server.py'
+      - 'server/identity.json'
       - 'upstream.lock.json'
 
 permissions:
@@ -41,7 +43,9 @@ jobs:
         run: python3 -m unittest discover -s tests
 
       - name: Fetch pinned server sources
-        run: python3 tools/bootstrap.py --component server --submodules
+        run: |
+          python3 tools/bootstrap.py --component server --submodules
+          python3 tools/prepare_server.py vendor/server --report dist/build-report/source.json
 
       - name: Install Rust and cross
         run: |
@@ -57,18 +61,37 @@ jobs:
         run: |
           out=vendor/server/target/${{ matrix.target }}/release
           mkdir -p dist/build-report
-          for bin in hbbs hbbr; do
+          for bin in zhd-rendezvous zhd-relay zhd-utils; do
             test -x "$out/$bin"
             file "$out/$bin" | tee -a dist/build-report/file-types.txt
           done
-          sha256sum "$out/hbbs" "$out/hbbr" > dist/build-report/binaries.sha256
+          for old in hbbs hbbr rustdesk-utils; do
+            if [ -e "$out/$old" ]; then echo "unexpected upstream-named binary: $old"; exit 1; fi
+          done
+          sha256sum "$out/zhd-rendezvous" "$out/zhd-relay" "$out/zhd-utils" > dist/build-report/binaries.sha256
           cat dist/build-report/binaries.sha256
           git -C vendor/server rev-parse HEAD > dist/build-report/server-commit.txt
           git -C vendor/server submodule status --recursive > dist/build-report/server-submodules.txt
-          # Static musl build: no dynamic section expected for x86_64.
+          git -C vendor/server diff --stat > dist/build-report/upstream-changes.txt
           if [ "${{ matrix.target }}" = x86_64-unknown-linux-musl ]; then
-            "$out/hbbs" --help > dist/build-report/hbbs-help.txt 2>&1 || true
-            head -5 dist/build-report/hbbs-help.txt
+            "$out/zhd-rendezvous" --help > dist/build-report/rendezvous-help.txt 2>&1 || true
+            "$out/zhd-relay" --help > dist/build-report/relay-help.txt 2>&1 || true
+            "$out/zhd-utils" > dist/build-report/utils-help.txt 2>&1 || true
+            cat dist/build-report/*-help.txt
+            grep -q ZHeroDiZk dist/build-report/rendezvous-help.txt
+            grep -q ZHeroDiZk dist/build-report/relay-help.txt
+            if grep -qi 'rustdesk\|purslane' dist/build-report/*-help.txt; then echo "third-party name in help output"; exit 1; fi
+            # Smoke test: both services start and listen on their default ports.
+            mkdir -p "$RUNNER_TEMP/zhd" && cd "$RUNNER_TEMP/zhd"
+            "$GITHUB_WORKSPACE/$out/zhd-rendezvous" > rendezvous.log 2>&1 &
+            rpid=$!
+            "$GITHUB_WORKSPACE/$out/zhd-relay" > relay.log 2>&1 &
+            bpid=$!
+            sleep 5
+            (echo > /dev/tcp/127.0.0.1/21116) && echo "rendezvous listens on 21116"
+            (echo > /dev/tcp/127.0.0.1/21117) && echo "relay listens on 21117"
+            kill $rpid $bpid || true
+            cp rendezvous.log relay.log "$GITHUB_WORKSPACE/dist/build-report/"
           fi
 
       - name: Upload build evidence
