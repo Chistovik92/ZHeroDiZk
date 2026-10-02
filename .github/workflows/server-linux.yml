@@ -132,6 +132,8 @@ jobs:
           (echo > /dev/tcp/127.0.0.1/21117) && echo "relay listens"
           ps -o user= -C zhd-rendezvous | sort -u | grep -qx zherodizk
           sudo ls -l /var/lib/zherodizk | tee dist/build-report/state-dir.txt
+          test "$(sudo stat -c %a /var/lib/zherodizk/id_ed25519)" = 600
+          test "$(sudo stat -c %a /var/lib/zherodizk)" = 750
           sudo systemctl stop zhd-rendezvous zhd-relay
           sudo apt-get remove -y zherodizk-server
           test ! -e /usr/bin/zhd-relay

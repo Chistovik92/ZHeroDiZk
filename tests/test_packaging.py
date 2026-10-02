@@ -4,7 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "packaging"
 UNITS = {"zhd-rendezvous": "ZHD_RENDEZVOUS_ARGS", "zhd-relay": "ZHD_RELAY_ARGS"}
-HARDENING = ["NoNewPrivileges=true", "ProtectSystem=strict", "ProtectHome=true", "PrivateTmp=true",
+HARDENING = ["UMask=0077", "NoNewPrivileges=true", "ProtectSystem=strict", "ProtectHome=true", "PrivateTmp=true",
              "User=zherodizk", "ReadWritePaths=/var/lib/zherodizk", "RestrictAddressFamilies="]
 
 
