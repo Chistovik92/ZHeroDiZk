@@ -25,9 +25,10 @@ ZHeroDiZk/
 │   ├── bootstrap.py        получение закреплённого исходного клиента в НОВЫЙ каталог
 │   ├── prepare_client.py   проверка чистоты и подготовка checkout к сборке
 │   ├── apply_patch_once.py идемпотентное применение патча к Flutter SDK
+│   ├── sbom.py             SBOM (CycloneDX) и сводка лицензий
 │   ├── check_client_identity.py  проверка идентичности по выводу собранного клиента
 │   └── launch_client.py    запуск клиента с предварительной диагностикой
-├── tests/                  Python-тесты (39): инструменты, подготовка клиента, launcher
+├── tests/                  Python-тесты (44): инструменты, подготовка клиента, launcher
 └── docs/                   документация (см. README)
 ```
 
