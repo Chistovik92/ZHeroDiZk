@@ -2,7 +2,7 @@
 
 [![Проверки исходников](https://github.com/Chistovik92/ZHeroDiZk/actions/workflows/checks.yml/badge.svg)](https://github.com/Chistovik92/ZHeroDiZk/actions/workflows/checks.yml)
 
-**Версия: 0.1.3 (разработка, не выпущено) · Автор: SecretHero · Лицензия: AGPL-3.0-only**
+**Версия: 0.1.3 (разработка, не выпущено) · Автор: SecretHero ([Telegram @SecretHero](https://t.me/SecretHero)) · Лицензия: AGPL-3.0-only**
 
 ZHeroDiZk — открытый проект удалённого доступа в классе RustDesk и AnyDesk:
 собственный сервер на Linux и клиенты для Windows, Linux, Android, macOS и iOS,
@@ -97,7 +97,7 @@ python3 tools/doctor.py --json
 
 ## Лицензия и авторство
 
-Автор проекта — **SecretHero**. Новые исходники: AGPL-3.0-only, полный текст в
+Автор проекта — **SecretHero** (Telegram: [@SecretHero](https://t.me/SecretHero)). Новые исходники: AGPL-3.0-only, полный текст в
 [LICENSE](LICENSE). Проект использует сторонний открытый код под своими
 лицензиями; обязательные уведомления сохранены в [NOTICE](NOTICE) и
 [docs/LICENSING.md](docs/LICENSING.md) и не удаляются.
