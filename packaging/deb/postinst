@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+    if ! getent passwd zherodizk >/dev/null; then
+        adduser --system --group --home /var/lib/zherodizk --no-create-home \
+            --shell /usr/sbin/nologin --quiet zherodizk
+    fi
+    install -d -o zherodizk -g zherodizk -m 0750 /var/lib/zherodizk
+    if [ -d /run/systemd/system ]; then systemctl daemon-reload || true; fi
+    echo "ZHeroDiZk: edit /etc/zherodizk/server.env, then run:"
+    echo "  systemctl enable --now zhd-rendezvous zhd-relay"
+fi
+exit 0

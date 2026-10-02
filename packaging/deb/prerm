@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+if [ "$1" = remove ] && [ -d /run/systemd/system ]; then
+    systemctl stop zhd-rendezvous zhd-relay || true
+    systemctl disable zhd-rendezvous zhd-relay || true
+fi
+exit 0

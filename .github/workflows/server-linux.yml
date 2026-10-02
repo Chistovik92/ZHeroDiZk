@@ -9,6 +9,7 @@ on:
       - 'tools/bootstrap.py'
       - 'tools/prepare_server.py'
       - 'server/identity.json'
+      - 'packaging/**'
       - 'upstream.lock.json'
 
 permissions:
@@ -93,6 +94,84 @@ jobs:
             kill $rpid $bpid || true
             cp rendezvous.log relay.log "$GITHUB_WORKSPACE/dist/build-report/"
           fi
+
+      - name: Build packages
+        run: |
+          out="$PWD/vendor/server/target/${{ matrix.target }}/release"
+          version=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          case "${{ matrix.target }}" in
+            x86_64-*) deb_arch=amd64; rpm_arch=x86_64; tar_arch=x86_64 ;;
+            aarch64-*) deb_arch=arm64; rpm_arch=aarch64; tar_arch=aarch64 ;;
+          esac
+          sudo apt-get update && sudo apt-get install -y rpm
+          mkdir -p pkgs
+          sh packaging/build-deb.sh "$out" "$version" "$deb_arch" pkgs
+          sh packaging/build-rpm.sh "$out" "$version" "$rpm_arch" pkgs
+          mkdir -p "tarball/zherodizk-server-$version-$tar_arch"
+          cp "$out"/zhd-rendezvous "$out"/zhd-relay "$out"/zhd-utils LICENSE NOTICE "tarball/zherodizk-server-$version-$tar_arch/"
+          tar -C tarball -czf "pkgs/zherodizk-server-$version-linux-$tar_arch.tar.gz" "zherodizk-server-$version-$tar_arch"
+          find pkgs -type f -name '*.rpm' -exec mv {} pkgs/ \; 2>/dev/null || true
+          ls -l pkgs
+          (cd pkgs && sha256sum * > "$GITHUB_WORKSPACE/dist/build-report/packages.sha256")
+          cat dist/build-report/packages.sha256
+          dpkg-deb --info pkgs/*.deb | tee dist/build-report/deb-info.txt
+          dpkg-deb --contents pkgs/*.deb | tee dist/build-report/deb-contents.txt
+          rpm -qpl pkgs/*.rpm | tee dist/build-report/rpm-contents.txt
+
+      - name: Test packages on the runner with systemd (x86_64)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          sudo dpkg -i pkgs/*.deb
+          getent passwd zherodizk
+          sudo systemd-analyze verify /lib/systemd/system/zhd-rendezvous.service /lib/systemd/system/zhd-relay.service
+          sudo systemctl start zhd-rendezvous zhd-relay
+          sleep 5
+          systemctl is-active zhd-rendezvous zhd-relay
+          (echo > /dev/tcp/127.0.0.1/21116) && echo "rendezvous listens"
+          (echo > /dev/tcp/127.0.0.1/21117) && echo "relay listens"
+          ps -o user= -C zhd-rendezvous | sort -u | grep -qx zherodizk
+          sudo ls -l /var/lib/zherodizk | tee dist/build-report/state-dir.txt
+          sudo systemctl stop zhd-rendezvous zhd-relay
+          sudo apt-get remove -y zherodizk-server
+          test ! -e /usr/bin/zhd-relay
+
+      - name: Test installation in other distributions (x86_64)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          : > dist/build-report/distro-results.txt
+          for img in debian:12 ubuntu:22.04 ubuntu:24.04; do
+            if docker run --rm -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c 'apt-get update -qq && apt-get install -y -qq /pkgs/*.deb >/dev/null && getent passwd zherodizk && zhd-utils genkeypair >/dev/null && echo OK'; then
+              echo "PASS $img" >> dist/build-report/distro-results.txt
+            else echo "FAIL $img" >> dist/build-report/distro-results.txt; fi
+          done
+          for img in rockylinux:9 almalinux:9 fedora:41; do
+            if docker run --rm -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c 'dnf install -y -q /pkgs/*.rpm >/dev/null && getent passwd zherodizk && zhd-utils genkeypair >/dev/null && echo OK'; then
+              echo "PASS $img" >> dist/build-report/distro-results.txt
+            else echo "FAIL $img" >> dist/build-report/distro-results.txt; fi
+          done
+          for img in alt:p11 alt:p10; do
+            if docker run --rm -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c 'rpm -i /pkgs/*.rpm && getent passwd zherodizk && zhd-utils genkeypair >/dev/null && echo OK'; then
+              echo "PASS $img" >> dist/build-report/distro-results.txt
+            else echo "FAIL $img" >> dist/build-report/distro-results.txt; fi
+          done
+          if docker run --rm -v "$PWD/pkgs:/pkgs:ro" alpine:3.20 sh -c 'tar -xzf /pkgs/*.tar.gz -C /tmp && /tmp/zherodizk-server-*/zhd-utils genkeypair >/dev/null && echo OK'; then
+            echo "PASS alpine:3.20 (tarball)" >> dist/build-report/distro-results.txt
+          else echo "FAIL alpine:3.20 (tarball)" >> dist/build-report/distro-results.txt; fi
+          cat dist/build-report/distro-results.txt
+
+      - name: Test Docker image and Compose (x86_64)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          mkdir -p bin/amd64
+          cp vendor/server/target/${{ matrix.target }}/release/zhd-* bin/amd64/
+          docker build -f packaging/docker/Dockerfile --build-arg BIN_DIR=bin/amd64 -t zherodizk-server:local .
+          docker compose -f packaging/docker/docker-compose.yml up -d
+          sleep 8
+          docker compose -f packaging/docker/docker-compose.yml ps | tee dist/build-report/compose-ps.txt
+          (echo > /dev/tcp/127.0.0.1/21116) && echo "compose rendezvous listens"
+          (echo > /dev/tcp/127.0.0.1/21117) && echo "compose relay listens"
+          docker compose -f packaging/docker/docker-compose.yml logs --no-color > dist/build-report/compose.log
+          docker compose -f packaging/docker/docker-compose.yml down -v
 
       - name: Upload build evidence
         if: always()

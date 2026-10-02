@@ -1,0 +1,31 @@
+# ZHeroDiZk server: rendezvous + relay sharing one key directory.
+# Build the image first (see Dockerfile) and tag it zherodizk-server:local.
+services:
+  zhd-rendezvous:
+    image: zherodizk-server:local
+    command: ["zhd-rendezvous", "-k", "_"]
+    ports:
+      - "21115:21115"
+      - "21116:21116"
+      - "21116:21116/udp"
+      - "21118:21118"
+    volumes:
+      - zhd-data:/data
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+  zhd-relay:
+    image: zherodizk-server:local
+    command: ["zhd-relay", "-k", "_"]
+    ports:
+      - "21117:21117"
+      - "21119:21119"
+    volumes:
+      - zhd-data:/data
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+volumes:
+  zhd-data:
