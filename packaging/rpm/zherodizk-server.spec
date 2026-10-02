@@ -22,8 +22,10 @@ install -m 0644 @SRCDIR@/systemd/*.service %{buildroot}/usr/lib/systemd/system/
 install -m 0640 @SRCDIR@/common/server.env %{buildroot}/etc/zherodizk/server.env
 
 %pre
-getent group zherodizk >/dev/null || groupadd -r zherodizk
-getent passwd zherodizk >/dev/null || useradd -r -g zherodizk -d /var/lib/zherodizk -s /sbin/nologin zherodizk
+id -u zherodizk >/dev/null 2>&1 || {
+    groupadd -r zherodizk 2>/dev/null || true
+    useradd -r -g zherodizk -d /var/lib/zherodizk -s /sbin/nologin zherodizk
+}
 exit 0
 
 %post

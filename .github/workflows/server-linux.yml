@@ -152,7 +152,7 @@ jobs:
             else echo "FAIL $img" >> dist/build-report/distro-results.txt; fi
           done
           for img in alt:p11 alt:p10; do
-            if docker run --rm -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c 'rpm -i /pkgs/*.rpm && getent passwd zherodizk && zhd-utils genkeypair >/dev/null && echo OK' > "dist/build-report/distro-logs/${img//:/_}.log" 2>&1; then
+            if docker run --rm -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c 'rpm -i /pkgs/*.rpm && id zherodizk && zhd-utils genkeypair >/dev/null && echo OK' > "dist/build-report/distro-logs/${img//:/_}.log" 2>&1; then
               echo "PASS $img" >> dist/build-report/distro-results.txt
             else echo "FAIL $img" >> dist/build-report/distro-results.txt; fi
           done
