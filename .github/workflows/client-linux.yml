@@ -162,6 +162,12 @@ jobs:
           rustc --version > dist/build-report/rust-version.txt
           flutter --version > dist/build-report/flutter-version.txt
 
+      - name: Component and licence report
+        run: |
+          (cd vendor/client && cargo metadata --format-version 1 --locked --filter-platform x86_64-unknown-linux-gnu) > dist/build-report/cargo-metadata.json
+          python3 tools/sbom.py --cargo-metadata dist/build-report/cargo-metadata.json             --pubspec-lock vendor/client/flutter/pubspec.lock             --output dist/build-report/sbom.cdx.json | tee dist/build-report/sbom-summary.txt
+          rm dist/build-report/cargo-metadata.json
+
       # Only diagnostic evidence is uploaded. Executables stay on the runner
       # until the project's source/license/security release gates are complete.
       - name: Upload build evidence

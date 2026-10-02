@@ -12,7 +12,7 @@
 ## Проверки
 
 ```bash
-python3 -m unittest discover -s tests -v   # 39 тестов
+python3 -m unittest discover -s tests -v   # 44 теста
 python3 tools/bootstrap.py --check-lock
 cargo test --workspace --offline           # 17 тестов access-policy
 ```

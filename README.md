@@ -31,9 +31,11 @@ ZHeroDiZk — открытый проект удалённого доступа 
 | Название, лицензия, CI исходных проверок | ✅ |
 | Диагностика Linux/X11 (`tools/doctor.py`, libxdo) | ✅ |
 | Получение и проверка закреплённых исходников клиента | ✅ |
+| Аудит лицензии `hbb_common` ([docs/LICENSE-AUDIT.md](docs/LICENSE-AUDIT.md)) | ✅ выполнен; подтверждение правообладателя ⬜ |
+| SBOM и отчёт о лицензиях (`tools/sbom.py`) | 🟡 инструмент готов, в сборке не запускался |
 | Библиотека правил доступа `access-policy` (Rust, 17 тестов) | ✅ как модуль; ⬜ не встроена в клиент |
 | Сборка Linux-клиента в Actions | ✅ (запуск на `1fc6aca`) |
-| Собственная идентичность Linux-клиента | 🟡 код влит; сборка с ней в CI не запускалась |
+| Собственная идентичность Linux-клиента | ✅ сборка на `9f8f7a1` прошла в CI (проверка по бинарнику) |
 | Клиент Windows | ⬜ 0.2.0 |
 | Собственный сервер встреч и ретрансляции | ⬜ 0.3.0 |
 | Сервер управления, аккаунты, MFA, PostgreSQL | ⬜ 0.4.0 |
@@ -91,6 +93,7 @@ python3 tools/doctor.py --json
 | [docs/CLIENT-LINUX.md](docs/CLIENT-LINUX.md) | сборка и запуск Linux-клиента |
 | [docs/SECURITY.md](docs/SECURITY.md) | модель угроз и меры |
 | [docs/LICENSING.md](docs/LICENSING.md) | лицензии и их обязательства |
+| [docs/LICENSE-AUDIT.md](docs/LICENSE-AUDIT.md) | аудит лицензии подмодуля |
 | [docs/NAME-CHECK.md](docs/NAME-CHECK.md) | проверка названия |
 | [docs/HANDOFF.md](docs/HANDOFF.md) | заметки для продолжения работы |
 | [CHANGELOG.md](CHANGELOG.md) | история изменений |
