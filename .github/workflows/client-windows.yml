@@ -138,6 +138,10 @@ jobs:
 
       - name: Install pinned vcpkg and codecs
         working-directory: vendor/client
+        env:
+          # As in the upstream build: host and target triplet must both be static,
+          # otherwise ffmpeg is built for x64-windows only and the codec crate cannot find it.
+          VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static
         run: |
           git init "$VCPKG_ROOT"
           git -C "$VCPKG_ROOT" remote add origin https://github.com/microsoft/vcpkg.git
