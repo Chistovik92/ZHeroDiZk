@@ -4,9 +4,7 @@ Release:        1
 Summary:        ZHeroDiZk rendezvous and relay servers
 License:        AGPL-3.0-only
 URL:            https://github.com/Chistovik92/ZHeroDiZk
-BuildArch:      @ARCH@
 AutoReqProv:    no
-Requires(pre):  /usr/sbin/useradd, /usr/bin/getent
 
 %description
 Static builds of the ZHeroDiZk rendezvous server (zhd-rendezvous), relay server
