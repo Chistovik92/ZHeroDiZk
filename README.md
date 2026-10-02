@@ -2,7 +2,7 @@
 
 [![Проверки исходников](https://github.com/Chistovik92/ZHeroDiZk/actions/workflows/checks.yml/badge.svg)](https://github.com/Chistovik92/ZHeroDiZk/actions/workflows/checks.yml)
 
-**Версия: 0.1.3 (разработка, не выпущено) · Автор: SecretHero ([Telegram @SecretHero](https://t.me/SecretHero)) · Лицензия: AGPL-3.0-only**
+**Версия: 0.1.5 (пре-релиз) · Автор: SecretHero ([Telegram @SecretHero](https://t.me/SecretHero)) · Лицензия: AGPL-3.0-only**
 
 ZHeroDiZk — открытый проект удалённого доступа в классе RustDesk и AnyDesk:
 собственный сервер на Linux и клиенты для Windows, Linux, Android, macOS и iOS,
@@ -32,7 +32,7 @@ ZHeroDiZk — открытый проект удалённого доступа 
 | Диагностика Linux/X11 (`tools/doctor.py`, libxdo) | ✅ |
 | Получение и проверка закреплённых исходников клиента | ✅ |
 | Аудит лицензии `hbb_common` ([docs/LICENSE-AUDIT.md](docs/LICENSE-AUDIT.md)) | ✅ выполнен; подтверждение правообладателя ⬜ |
-| SBOM и отчёт о лицензиях (`tools/sbom.py`) | 🟡 инструмент готов, в сборке не запускался |
+| SBOM и отчёт о лицензиях (`tools/sbom.py`) | ✅ v0.1.5; лицензии Dart ещё не собираются (0.1.7) |
 | Библиотека правил доступа `access-policy` (Rust, 17 тестов) | ✅ как модуль; ⬜ не встроена в клиент |
 | Сборка Linux-клиента в Actions | ✅ (запуск на `1fc6aca`) |
 | Собственная идентичность Linux-клиента | ✅ сборка на `9f8f7a1` прошла в CI (проверка по бинарнику) |
