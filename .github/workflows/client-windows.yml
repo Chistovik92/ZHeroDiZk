@@ -101,7 +101,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: bridge-files
-          path: ./
+          path: vendor/client
 
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@ebc0426251bc40c7cd31162802432c68818ab8f0
@@ -136,13 +136,21 @@ jobs:
           rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt --target x86_64-pc-windows-msvc
           rustup default "$RUST_VERSION"
 
+      - name: Cache vcpkg binary packages
+        uses: actions/cache@v4
+        with:
+          path: C:/vcpkg-cache
+          key: vcpkg-win-v1-${{ hashFiles('upstream.lock.json') }}
+
       - name: Install pinned vcpkg and codecs
         working-directory: vendor/client
         env:
           # As in the upstream build: host and target triplet must both be static,
           # otherwise ffmpeg is built for x64-windows only and the codec crate cannot find it.
           VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static
+          VCPKG_DEFAULT_BINARY_CACHE: C:/vcpkg-cache
         run: |
+          mkdir -p C:/vcpkg-cache
           git init "$VCPKG_ROOT"
           git -C "$VCPKG_ROOT" remote add origin https://github.com/microsoft/vcpkg.git
           git -C "$VCPKG_ROOT" fetch origin "$VCPKG_COMMIT_ID"
