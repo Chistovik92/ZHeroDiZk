@@ -2,6 +2,7 @@ Package: zherodizk-server
 Version: @VERSION@
 Section: net
 Priority: optional
+Depends: adduser
 Architecture: @ARCH@
 Maintainer: SecretHero <noreply@users.noreply.github.com>
 Homepage: https://github.com/Chistovik92/ZHeroDiZk

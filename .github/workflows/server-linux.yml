@@ -103,10 +103,10 @@ jobs:
             x86_64-*) deb_arch=amd64; rpm_arch=x86_64; tar_arch=x86_64 ;;
             aarch64-*) deb_arch=arm64; rpm_arch=aarch64; tar_arch=aarch64 ;;
           esac
-          sudo apt-get update && sudo apt-get install -y rpm
           mkdir -p pkgs
           sh packaging/build-deb.sh "$out" "$version" "$deb_arch" pkgs
-          sh packaging/build-rpm.sh "$out" "$version" "$rpm_arch" pkgs
+          docker run --rm -v "$PWD:/w" -w /w fedora:41 sh -c "dnf install -y -q rpm-build >/dev/null && sh packaging/build-rpm.sh vendor/server/target/${{ matrix.target }}/release $version $rpm_arch pkgs"
+          sudo chown -R "$USER" pkgs
           mkdir -p "tarball/zherodizk-server-$version-$tar_arch"
           cp "$out"/zhd-rendezvous "$out"/zhd-relay "$out"/zhd-utils LICENSE NOTICE "tarball/zherodizk-server-$version-$tar_arch/"
           tar -C tarball -czf "pkgs/zherodizk-server-$version-linux-$tar_arch.tar.gz" "zherodizk-server-$version-$tar_arch"
@@ -117,7 +117,7 @@ jobs:
           cat dist/build-report/packages.sha256
           dpkg-deb --info pkgs/*.deb | tee dist/build-report/deb-info.txt
           dpkg-deb --contents pkgs/*.deb | tee dist/build-report/deb-contents.txt
-          rpm -qpl pkgs/*.rpm | tee dist/build-report/rpm-contents.txt
+          docker run --rm -v "$PWD/pkgs:/pkgs:ro" fedora:41 sh -c 'rpm -qpl /pkgs/*.rpm; rpm -qpi /pkgs/*.rpm' | tee dist/build-report/rpm-contents.txt
 
       - name: Test packages on the runner with systemd (x86_64)
         if: matrix.target == 'x86_64-unknown-linux-musl'
@@ -140,22 +140,23 @@ jobs:
         if: matrix.target == 'x86_64-unknown-linux-musl'
         run: |
           : > dist/build-report/distro-results.txt
+          mkdir -p dist/build-report/distro-logs
           for img in debian:12 ubuntu:22.04 ubuntu:24.04; do
-            if docker run --rm -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c 'apt-get update -qq && apt-get install -y -qq /pkgs/*.deb >/dev/null && getent passwd zherodizk && zhd-utils genkeypair >/dev/null && echo OK'; then
+            if docker run --rm -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c 'apt-get update -qq && apt-get install -y /pkgs/*.deb && getent passwd zherodizk && zhd-utils genkeypair >/dev/null && echo OK' > "dist/build-report/distro-logs/${img//:/_}.log" 2>&1; then
               echo "PASS $img" >> dist/build-report/distro-results.txt
             else echo "FAIL $img" >> dist/build-report/distro-results.txt; fi
           done
           for img in rockylinux:9 almalinux:9 fedora:41; do
-            if docker run --rm -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c 'dnf install -y -q /pkgs/*.rpm >/dev/null && getent passwd zherodizk && zhd-utils genkeypair >/dev/null && echo OK'; then
+            if docker run --rm -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c 'dnf install -y /pkgs/*.rpm && getent passwd zherodizk && zhd-utils genkeypair >/dev/null && echo OK' > "dist/build-report/distro-logs/${img//:/_}.log" 2>&1; then
               echo "PASS $img" >> dist/build-report/distro-results.txt
             else echo "FAIL $img" >> dist/build-report/distro-results.txt; fi
           done
           for img in alt:p11 alt:p10; do
-            if docker run --rm -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c 'rpm -i /pkgs/*.rpm && getent passwd zherodizk && zhd-utils genkeypair >/dev/null && echo OK'; then
+            if docker run --rm -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c 'rpm -i /pkgs/*.rpm && getent passwd zherodizk && zhd-utils genkeypair >/dev/null && echo OK' > "dist/build-report/distro-logs/${img//:/_}.log" 2>&1; then
               echo "PASS $img" >> dist/build-report/distro-results.txt
             else echo "FAIL $img" >> dist/build-report/distro-results.txt; fi
           done
-          if docker run --rm -v "$PWD/pkgs:/pkgs:ro" alpine:3.20 sh -c 'tar -xzf /pkgs/*.tar.gz -C /tmp && /tmp/zherodizk-server-*/zhd-utils genkeypair >/dev/null && echo OK'; then
+          if docker run --rm -v "$PWD/pkgs:/pkgs:ro" alpine:3.20 sh -c 'tar -xzf /pkgs/*.tar.gz -C /tmp && /tmp/zherodizk-server-*/zhd-utils genkeypair >/dev/null && echo OK' > dist/build-report/distro-logs/alpine.log 2>&1; then
             echo "PASS alpine:3.20 (tarball)" >> dist/build-report/distro-results.txt
           else echo "FAIL alpine:3.20 (tarball)" >> dist/build-report/distro-results.txt; fi
           cat dist/build-report/distro-results.txt
