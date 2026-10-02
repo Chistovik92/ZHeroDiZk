@@ -22,11 +22,11 @@ def launch(argv=None, bundle=None, check=None, execute=None):
     if status == 2:
         print("ZHeroDiZk: запуск остановлен. Исправьте ошибки диагностики выше.", file=sys.stderr)
         return status
-    binary = bundle / "rustdesk"
+    binary = bundle / "zherodizk"
     if not binary.is_file():
         print(f"Не найден клиент: {binary}", file=sys.stderr)
         return 2
-    print("ZHeroDiZk: экспериментальная сборка на базе RustDesk; policy ещё не интегрирована.", flush=True)
+    print("ZHeroDiZk: экспериментальная сборка на базе RustDesk; собственные правила доступа ещё не подключены.", flush=True)
     sys.stdout.flush()
     sys.stderr.flush()
     try:
