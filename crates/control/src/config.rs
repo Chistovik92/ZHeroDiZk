@@ -13,6 +13,8 @@ pub struct Config {
     pub allow_registration: bool,
     /// 32-byte key (base64) used to encrypt TOTP secrets; MFA is unavailable without it.
     pub mfa_key: Option<[u8; 32]>,
+    /// 32-byte seed (base64) of the Ed25519 key that signs session grants.
+    pub grant_key: Option<[u8; 32]>,
 }
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -25,6 +27,20 @@ pub enum ConfigError {
     InvalidFlag(String),
     #[error("ZHD_MFA_KEY must be 32 bytes encoded as standard base64")]
     InvalidMfaKey,
+    #[error("ZHD_GRANT_KEY must be 32 bytes encoded as standard base64")]
+    InvalidGrantKey,
+}
+
+/// An optional 32-byte key in standard base64; empty or missing means "not configured".
+fn parse_key(value: Option<String>) -> Result<Option<[u8; 32]>, ()> {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    match value.map(|v| v.trim().to_owned()).filter(|v| !v.is_empty()) {
+        None => Ok(None),
+        Some(text) => {
+            let bytes = STANDARD.decode(text).map_err(|_| ())?;
+            Ok(Some(<[u8; 32]>::try_from(bytes.as_slice()).map_err(|_| ())?))
+        }
+    }
 }
 
 impl Config {
@@ -47,15 +63,9 @@ impl Config {
             Some(v) if v == "true" || v == "1" => true,
             Some(other) => return Err(ConfigError::InvalidFlag(other)),
         };
-        let mfa_key = match get("ZHD_MFA_KEY").map(|v| v.trim().to_owned()).filter(|v| !v.is_empty()) {
-            None => None,
-            Some(text) => {
-                use base64::{engine::general_purpose::STANDARD, Engine};
-                let bytes = STANDARD.decode(text).map_err(|_| ConfigError::InvalidMfaKey)?;
-                Some(<[u8; 32]>::try_from(bytes.as_slice()).map_err(|_| ConfigError::InvalidMfaKey)?)
-            }
-        };
-        Ok(Self { listen, database_url, allow_registration, mfa_key })
+        let mfa_key = parse_key(get("ZHD_MFA_KEY")).map_err(|_| ConfigError::InvalidMfaKey)?;
+        let grant_key = parse_key(get("ZHD_GRANT_KEY")).map_err(|_| ConfigError::InvalidGrantKey)?;
+        Ok(Self { listen, database_url, allow_registration, mfa_key, grant_key })
     }
 
     pub fn from_env() -> Result<Self, ConfigError> {
@@ -115,6 +125,15 @@ mod tests {
         for bad in ["not base64!", "AQEB", "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="] {
             assert_eq!(Config::from_lookup(lookup(&[base, ("ZHD_MFA_KEY", bad)])), Err(ConfigError::InvalidMfaKey), "{bad}");
         }
+    }
+
+    #[test]
+    fn grant_key_follows_the_same_rules() {
+        let base = ("ZHD_DATABASE_URL", "postgres://x");
+        assert_eq!(Config::from_lookup(lookup(&[base])).unwrap().grant_key, None);
+        let good = "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=";
+        assert_eq!(Config::from_lookup(lookup(&[base, ("ZHD_GRANT_KEY", good)])).unwrap().grant_key, Some([2u8; 32]));
+        assert_eq!(Config::from_lookup(lookup(&[base, ("ZHD_GRANT_KEY", "AQEB")])), Err(ConfigError::InvalidGrantKey));
     }
 
     #[test]

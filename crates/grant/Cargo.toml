@@ -1,0 +1,20 @@
+[package]
+name = "zherodizk-grant"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version = "1.75"
+description = "Signed short-lived session grants: issued by the control server, verified by the device agent"
+
+[dependencies]
+zherodizk-access-policy = { path = "../access-policy" }
+ed25519-dalek = "2"
+base64 = "0.22"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "1"
+
+[dev-dependencies]
+rand = "0.8"

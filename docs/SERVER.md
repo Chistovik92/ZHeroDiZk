@@ -110,7 +110,7 @@ sh packaging/build-rpm.sh <каталог-с-бинарниками> <верси
 
 Исходники и тесты — `crates/control`, интерфейс — [api/openapi.yaml](api/openapi.yaml), запуск для испытаний —
 [USAGE.md](USAGE.md). Переменные окружения: `ZHD_DATABASE_URL` (обязательно), `ZHD_LISTEN` (по умолчанию
-`127.0.0.1:21114`), `ZHD_ALLOW_REGISTRATION` (`true`/`false`), `ZHD_MFA_KEY` (32 байта в base64; без него MFA отвечает 503).
+`127.0.0.1:21114`), `ZHD_ALLOW_REGISTRATION` (`true`/`false`), `ZHD_MFA_KEY` (32 байта в base64; без него MFA отвечает 503), `ZHD_GRANT_KEY` (32 байта в base64, ключ подписи разрешений; без него выдача отвечает 503). Ключи создаёт `zherodizk-control generate-keys` (печатает, ничего не сохраняет).
 Пакеты, systemd-юнит и Docker-образ для него пока не сделаны, TLS не реализован (нужен обратный прокси).
 
 ## Чего ещё нет

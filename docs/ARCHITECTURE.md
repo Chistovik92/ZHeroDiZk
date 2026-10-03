@@ -62,10 +62,20 @@ Policy crate вызывается только ПОСЛЕ проверки по�
 `effective_capabilities` вычисляет итоговые права пользователя на устройство и станет входом для
 модуля `access-policy` на этапе 0.5.0.
 
-## Сущности БД (фактическая схема на 0.4.0)
+## Разрешения на сеанс (0.5.1)
+
+Оператор запрашивает разрешение у сервера управления (`POST .../devices/{device}/grants`). Сервер выдаёт его только в
+пределах правил доступа (`effective_capabilities`), подписывает Ed25519 на 60 секунд и записывает выдачу в журнал.
+Устройство проверяет подпись доверенным ключом, срок (не более 300 с независимо от подписи), привязку к своему
+идентификатору, запоминает идентификатор разрешения (одно разрешение — один сеанс), затем
+`authorize_connection` спрашивает `access-policy`: организация, включённость устройства, отзыв, согласие,
+режим и **пересечение** прав сервера, разрешения и локальных ограничений устройства. Само устройство всегда
+может отказать. Эта часть реализована как библиотека и проверена; встраивание в клиент — [AGENT-INTEGRATION.md](AGENT-INTEGRATION.md).
+
+## Сущности БД (фактическая схема на 0.5.1)
 
 users, sessions, recovery_codes, organizations, memberships, enrollment_tokens, devices, device_groups,
-device_group_members, acl_rules, address_book_entries, audit_events. Миграции — `crates/control/migrations`.
+device_group_members, acl_rules, address_book_entries, audit_events, grants. Миграции — `crates/control/migrations`.
 
 ## Сущности будущей БД (план)
 

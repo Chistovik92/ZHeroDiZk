@@ -2,7 +2,7 @@
 
 [![Проверки исходников](https://github.com/Chistovik92/ZHeroDiZk/actions/workflows/checks.yml/badge.svg)](https://github.com/Chistovik92/ZHeroDiZk/actions/workflows/checks.yml)
 
-**Версия: 0.4.0 (пре-релиз) · Автор: SecretHero ([Telegram @SecretHero](https://t.me/SecretHero)) · Лицензия: AGPL-3.0-only**
+**Версия: 0.5.1 (пре-релиз) · Автор: SecretHero ([Telegram @SecretHero](https://t.me/SecretHero)) · Лицензия: AGPL-3.0-only**
 
 ZHeroDiZk — открытый проект удалённого доступа в классе RustDesk и AnyDesk:
 собственный сервер на Linux и клиенты для Windows, Linux, Android, macOS и iOS,
@@ -46,7 +46,7 @@ ZHeroDiZk — открытый проект удалённого доступа 
 | Клиент Windows | 🟡 собирается в CI с идентичностью ZHeroDiZk (0.2.1–0.2.2); запуск на Windows не проверялся |
 | Сервер встреч и ретрансляции (`zhd-rendezvous`, `zhd-relay`) | 🟡 собирается, устанавливается из пакетов (8 дистрибутивов), Docker; готовых пакетов для скачивания нет — [docs/SERVER.md](docs/SERVER.md) |
 | Сервер управления: аккаунты, MFA, организации, устройства, ACL, аудит (`crates/control`, [OpenAPI](docs/api/openapi.yaml)) | ✅ 0.4.0, проверено в CI на PostgreSQL; пакетов и TLS пока нет |
-| Управляемые сеансы | ⬜ 0.5.0 |
+| Управляемые сеансы | 🟡 0.5.0: подписанные разрешения выдаёт сервер и проверяет библиотека (v0.5.1); агент их ещё не требует |
 | Веб-панель | ⬜ 0.6.0 |
 | Android / macOS / iOS | ⬜ 0.7.0 / 0.8.0 / 0.9.0 |
 | Публичный релиз | ⬜ 1.0.0 |
@@ -97,6 +97,8 @@ python3 tools/doctor.py --json
 | [docs/SERVER.md](docs/SERVER.md) | сервер: планируемая установка и эксплуатация |
 | [docs/USAGE.md](docs/USAGE.md) | как пользоваться: сейчас и по плану |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | разработка, проверки, правила вклада |
+| [docs/AGENT-INTEGRATION.md](docs/AGENT-INTEGRATION.md) | план встраивания проверки разрешений в клиент |
+| [docs/api/openapi.yaml](docs/api/openapi.yaml) | описание API сервера управления |
 | [docs/CLIENT-LINUX.md](docs/CLIENT-LINUX.md) | сборка и запуск Linux-клиента |
 | [docs/SECURITY.md](docs/SECURITY.md) | модель угроз и меры |
 | [docs/LICENSING.md](docs/LICENSING.md) | лицензии и их обязательства |

@@ -78,7 +78,7 @@ async fn group_in_org(state: &AppState, org: Uuid, group: Uuid) -> Result<(), Ap
     found.map(|_| ()).ok_or(ApiError::NotFound("group not found"))
 }
 
-async fn device_in_org(state: &AppState, org: Uuid, device: Uuid) -> Result<(), ApiError> {
+pub async fn device_in_org(state: &AppState, org: Uuid, device: Uuid) -> Result<(), ApiError> {
     let found: Option<i32> = sqlx::query_scalar("SELECT 1 FROM devices WHERE id = $1 AND org_id = $2")
         .bind(device)
         .bind(org)

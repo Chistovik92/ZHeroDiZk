@@ -3,6 +3,12 @@
 Автор: SecretHero. Формат версий — [docs/VERSIONING.md](docs/VERSIONING.md).
 Выпущены пре-релизы v0.1.1–v0.1.5 и v0.3.4 (только исходный код): https://github.com/Chistovik92/ZHeroDiZk/releases
 
+## 0.5.1 — выпущено (v0.5.1)
+
+- `crates/grant`: подписанные Ed25519 разрешения на сеанс (`zhg1.<kid>.<payload>.<signature>`), проверка (подпись, доверенный ключ, срок не более 300 с, устройство), кеш повторов, `authorize_connection` поверх `access-policy`.
+- Сервер управления: `GET /v1/grants/public-key`, `POST /v1/orgs/{org}/devices/{device}/grants` (только в пределах правил доступа, 60 с), `POST /v1/orgs/{org}/grants/{grant}/revoke`; ключ подписи `ZHD_GRANT_KEY`, команда `generate-keys`.
+- Проверено в CI на PostgreSQL: https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37084964176. Агент (клиент) пока разрешения не проверяет.
+
 ## 0.4.0 — выпущено (v0.4.0; включает 0.3.5 (Arch) и 0.3.7)
 
 - **0.3.7** Клиентские сборки больше не содержат встроенного сервера и ключа исходного проекта, его адреса API и проверки обновлений; проверка `check_client_network.py` в обеих сборках (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37081370611, https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37081373712).
