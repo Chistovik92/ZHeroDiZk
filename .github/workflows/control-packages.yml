@@ -112,13 +112,13 @@ jobs:
           mkdir -p dist/build-report/distro-logs
           t() {
             name=$1; img=$2; cmd=$3
-            if docker run --rm -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c "$cmd" > "dist/build-report/distro-logs/$name.log" 2>&1; then
+            if timeout 900 docker run --rm -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c "$cmd" > "dist/build-report/distro-logs/$name.log" 2>&1; then
               echo "PASS $img" >> dist/build-report/distro-results.txt
             else echo "FAIL $img" >> dist/build-report/distro-results.txt; fi
           }
-          t debian12 debian:12 'apt-get update -qq && apt-get install -y /pkgs/*.deb && id zherodizk-control && zherodizk-control generate-keys | grep -c ZHD_ | grep -qx 2 && echo OK'
-          t ubuntu2204 ubuntu:22.04 'apt-get update -qq && apt-get install -y /pkgs/*.deb && id zherodizk-control && echo OK'
-          t ubuntu2404 ubuntu:24.04 'apt-get update -qq && apt-get install -y /pkgs/*.deb && id zherodizk-control && echo OK'
+          t debian12 debian:12 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends /pkgs/*.deb && id zherodizk-control && zherodizk-control generate-keys | grep -c ZHD_ | grep -qx 2 && echo OK'
+          t ubuntu2204 ubuntu:22.04 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends /pkgs/*.deb && id zherodizk-control && echo OK'
+          t ubuntu2404 ubuntu:24.04 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends /pkgs/*.deb && id zherodizk-control && echo OK'
           t rocky9 rockylinux:9 'dnf install -y /pkgs/*.rpm && id zherodizk-control && zherodizk-control generate-keys | grep -c ZHD_ | grep -qx 2 && echo OK'
           t alma9 almalinux:9 'dnf install -y /pkgs/*.rpm && id zherodizk-control && echo OK'
           t fedora41 fedora:41 'dnf install -y /pkgs/*.rpm && id zherodizk-control && echo OK'
@@ -153,11 +153,11 @@ jobs:
           mkdir -p dist/build-report/distro-logs
           t() {
             name=$1; img=$2; cmd=$3
-            if docker run --rm --platform linux/arm64 -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c "$cmd" > "dist/build-report/distro-logs/arm64_$name.log" 2>&1; then
+            if timeout 900 docker run --rm --platform linux/arm64 -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c "$cmd" > "dist/build-report/distro-logs/arm64_$name.log" 2>&1; then
               echo "PASS arm64 $name" >> dist/build-report/distro-results.txt
             else echo "FAIL arm64 $name" >> dist/build-report/distro-results.txt; fi
           }
-          t debian12 debian:12 'apt-get update -qq && apt-get install -y /pkgs/*.deb && id zherodizk-control && zherodizk-control generate-keys | grep -c ZHD_ | grep -qx 2 && echo OK'
+          t debian12 debian:12 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends /pkgs/*.deb && id zherodizk-control && zherodizk-control generate-keys | grep -c ZHD_ | grep -qx 2 && echo OK'
           t fedora41 fedora:41 'dnf install -y /pkgs/*.rpm && id zherodizk-control && zherodizk-control generate-keys | grep -c ZHD_ | grep -qx 2 && echo OK'
           cat dist/build-report/distro-results.txt
           if grep -q '^FAIL' dist/build-report/distro-results.txt; then exit 1; fi
