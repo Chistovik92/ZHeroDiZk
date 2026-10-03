@@ -99,6 +99,7 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/v1/auth/logout", post(logout))
         .route("/v1/auth/me", get(me))
+        .route("/v1/auth/password", post(change_password))
         .route("/v1/auth/mfa/enroll", post(mfa_enroll))
         .route("/v1/auth/mfa/confirm", post(mfa_confirm))
         .route("/v1/auth/mfa/disable", post(mfa_disable))
@@ -311,6 +312,46 @@ async fn logout(State(state): State<AppState>, headers: HeaderMap) -> Result<Sta
         .bind(who.session_id)
         .execute(&state.pool)
         .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+struct PasswordChange {
+    current_password: String,
+    new_password: String,
+}
+
+/// Change the caller's password. The current password is required (a stolen session alone is
+/// not enough); wrong guesses count towards the account lockout. All other sessions end.
+async fn change_password(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<PasswordChange>,
+) -> Result<StatusCode, ApiError> {
+    let who = authenticate(&state, &headers).await?;
+    password::validate(&body.new_password).map_err(|e| ApiError::Invalid(e.to_string()))?;
+    let stored: String = sqlx::query_scalar("SELECT password_hash FROM users WHERE id = $1")
+        .bind(who.user_id)
+        .fetch_one(&state.pool)
+        .await?;
+    if !verify_blocking(Some(stored), body.current_password).await? {
+        register_failure(&state, who.user_id).await?;
+        return Err(ApiError::Forbidden("current password is wrong"));
+    }
+    let hash = hash_blocking(body.new_password).await?;
+    let mut tx = state.pool.begin().await?;
+    sqlx::query("UPDATE users SET password_hash = $2, failed_attempts = 0, locked_until = NULL WHERE id = $1")
+        .bind(who.user_id)
+        .bind(&hash)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query("UPDATE sessions SET revoked_at = now() WHERE user_id = $1 AND id <> $2 AND revoked_at IS NULL")
+        .bind(who.user_id)
+        .bind(who.session_id)
+        .execute(&mut *tx)
+        .await?;
+    crate::audit::record(&mut *tx, None, Some(who.user_id), "auth.password_changed", None, serde_json::json!({})).await?;
+    tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }
 

@@ -2,9 +2,21 @@
 
 Автор: SecretHero.
 
-Версия проекта: 0.7.6 (пре-релиз; сбор лицензий Dart/vcpkg в SBOM, пункт 0.1.7). Это начало разработки, не законченный продукт; этапы агента, веб-панели и Android не завершены.
+Версия проекта: 0.7.7 (пре-релиз; веб-панель, сборка Android, установщики в выпуске, руководство). Это начало разработки, не законченный продукт; этап агента не начат, панель и Android не проверены на живых системах.
 Дорожная карта и версии: [ROADMAP.md](ROADMAP.md).
 PR: https://github.com/Chistovik92/ZHeroDiZk/pull/2.
+
+## Проверки 0.7.7
+
+Ветка `claude/github-sync-release-0-7-7-00c2a1`. Все удалённые ветки репозитория уже входили в `main` (слияний не потребовалось).
+
+- **Сервер управления:** 3 новых запроса (`GET …/members`, `GET …/grants`, `POST /v1/auth/password`), интеграционные тесты на PostgreSQL 16 и clippy без замечаний — [https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37157786594](https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37157786594). Описание OpenAPI сверяется с маршрутами тестом.
+- **Веб-панель** (`panel/`): проверка типов, сборка Vite, 6 тестов vitest, `npm audit` без уязвимостей, архив — [https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37157784725](https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37157784725). Внешний вид просмотрен в браузере только на заглушке API; прохода по живому серверу не было.
+- **Android:** сборка, подпись и проверка трёх APK (arm64-v8a, armeabi-v7a, x86_64) — [https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37157784789](https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37157784789). `apksigner verify` проходит; `aapt2`: пакет `io.github.chistovik92.zherodizk`, название ZHeroDiZk, `versionName` 0.7.7; `check_client_network.py` не нашёл чужих адресов и ключей в `librustdesk.so`, `libapp.so`, `libflutter.so`. В этом запуске использован временный тестовый ключ (секретов репозитория ещё нет). **На устройстве приложение не запускалось.**
+- Python-тесты (93) и проверка lock — [https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37157784682](https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37157784682).
+- Ключ подписи Android создан автором проекта (RSA 4096, срок до 2056 года), копия вне репозитория. Отпечаток сертификата SHA-256: `B1:6F:0C:F1:D8:ED:08:7B:52:5A:FB:25:27:11:B9:41:CC:98:0C:1C:2D:49:51:D5:B7:C6:08:CE:78:FD:0D:39`.
+
+Не проверялось: работа панели с живым сервером в браузере, установка и запуск APK на телефоне, workflow `release.yml` целиком (первый запуск — выпуск 0.7.7).
 
 ## Проверки 0.7.6 — сбор лицензий
 

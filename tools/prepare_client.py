@@ -81,7 +81,7 @@ def write_pending(pending, pending_files=None):
 def prepare(source, profile="baseline", platform="linux"):
     if profile not in ("baseline", "zherodizk"):
         raise ValueError("Unknown client profile")
-    if platform not in ("linux", "windows"):
+    if platform not in ("linux", "windows", "android"):
         raise ValueError("Unknown client platform")
     source = source.resolve()
     client = validate_lock(json.loads((ROOT / "upstream.lock.json").read_text(encoding="utf-8")))
@@ -129,7 +129,7 @@ def main():
     parser.add_argument("source", type=Path)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--profile", choices=("baseline", "zherodizk"), default="baseline")
-    parser.add_argument("--platform", choices=("linux", "windows"), default="linux")
+    parser.add_argument("--platform", choices=("linux", "windows", "android"), default="linux")
     args = parser.parse_args()
     try:
         report = prepare(args.source, args.profile, args.platform)

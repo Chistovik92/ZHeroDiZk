@@ -1,6 +1,6 @@
 # Структура проекта
 
-Автор: SecretHero. Описана реальная структура на версию 0.1.3. Каталоги будущих
+Автор: SecretHero. Описана реальная структура на версию 0.7.7. Каталоги будущих
 компонентов помечены «планируется» и в репозитории **ещё не существуют**.
 
 ```text
@@ -19,15 +19,20 @@ ZHeroDiZk/
 │   ├── client-windows.yml  сборка Windows-клиента (вручную и на ветке claude/windows-client)
 │   ├── server-linux.yml    сборка, пакеты и установочные тесты сервера встреч и ретрансляции
 │   ├── control.yml         тесты и clippy сервера управления и библиотеки разрешений на PostgreSQL
-│   └── control-packages.yml  пакеты сервера управления, установка, запуск, Docker Compose
+│   ├── control-packages.yml  пакеты сервера управления, установка, запуск, Docker Compose
+│   ├── client-android.yml  сборка и подпись APK Android (три архитектуры)
+│   ├── panel.yml           сборка, тесты и архив веб-панели
+│   └── release.yml         выпуск: собирает установщики всех компонентов и публикует GitHub Release
 ├── client/
 │   ├── linux-identity.json   манифест замен идентичности Linux-клиента
 │   ├── windows-identity.json манифест замен идентичности Windows-клиента
+│   ├── android-identity.json манифест замен идентичности Android-клиента (applicationId, подписи)
 │   ├── common-identity.json  общие замены: чужие адреса, ключи, проверка обновлений, видимые строки, логотип
 │   └── branding/             значок ZHeroDiZk (app_icon.ico, icon.svg), создаётся tools/make_icons.py
 ├── server/
 │   └── identity.json         манифест замен идентичности серверной части
 ├── packaging/              пакеты: server, control, client (тестовые сборки), arch, common, systemd, deb, rpm, Docker, скрипты
+├── panel/                  веб-панель (TypeScript, React, Vite): src, тесты vitest
 ├── crates/
 │   ├── access-policy/      Rust-библиотека правил доступа (zherodizk-access-policy)
 │   ├── control/            сервер управления (zherodizk-control): src, migrations, tests
@@ -56,8 +61,7 @@ ZHeroDiZk/
 | Каталог | Этап | Назначение |
 |---|---|---|
 | `client/` (расширение) | 0.2.0+ | собственные патчи и ресурсы клиента по платформам |
-| `panel/` | 0.6.0 | веб-панель (TypeScript/React) |
-| `mobile/` | 0.7.0+ | Android и iOS |
+| `mobile/` | 0.9.0 | iOS (Android собирается из `client/` как платформа исходного клиента) |
 
 ## Как связаны части
 

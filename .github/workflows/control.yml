@@ -2,6 +2,7 @@ name: control-server
 
 on:
   workflow_dispatch:
+  workflow_call:
   push:
     paths:
       - 'crates/control/**'

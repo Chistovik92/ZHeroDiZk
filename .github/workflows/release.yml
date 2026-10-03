@@ -1,0 +1,126 @@
+name: Release
+
+# A release carries installers for every component the roadmap lists as existing for that
+# version (servers, control server, Windows/Linux/Android clients, web panel), built by the
+# same workflows that verify them. Start it by pushing a tag vX.Y.Z (the tag must match the
+# version in Cargo.toml) or manually with the tag name.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release, e.g. v0.7.7 (must exist)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  check-tag:
+    runs-on: ubuntu-22.04
+    outputs:
+      tag: ${{ steps.t.outputs.tag }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - id: t
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          version=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          if [ "$tag" != "v$version" ]; then echo "::error::tag $tag does not match Cargo.toml version $version"; exit 1; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  checks:
+    needs: check-tag
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+          ref: ${{ needs.check-tag.outputs.tag }}
+      - run: python3 -m unittest discover -s tests
+      - run: python3 tools/bootstrap.py --check-lock
+
+  panel:
+    needs: check-tag
+    uses: ./.github/workflows/panel.yml
+
+  control-server:
+    needs: check-tag
+    uses: ./.github/workflows/control.yml
+
+  control-packages:
+    needs: check-tag
+    uses: ./.github/workflows/control-packages.yml
+    with:
+      package: true
+
+  server:
+    needs: check-tag
+    uses: ./.github/workflows/server-linux.yml
+    with:
+      package: true
+
+  client-linux:
+    needs: check-tag
+    uses: ./.github/workflows/client-linux.yml
+    with:
+      package: true
+
+  client-windows:
+    needs: check-tag
+    uses: ./.github/workflows/client-windows.yml
+    with:
+      package: true
+
+  client-android:
+    needs: check-tag
+    uses: ./.github/workflows/client-android.yml
+    with:
+      package: true
+    secrets: inherit
+
+  publish:
+    needs: [check-tag, checks, panel, control-server, control-packages, server, client-linux, client-windows, client-android]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+          ref: ${{ needs.check-tag.outputs.tag }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*dist*'
+          path: dist/artifacts
+          merge-multiple: true
+      - name: Collect files and notes
+        run: |
+          mkdir -p dist/release
+          find dist/artifacts -type f ! -name 'SHA256SUMS*' -exec cp {} dist/release/ \;
+          (cd dist/release && sha256sum -- * > SHA256SUMS && cat SHA256SUMS)
+          tag="${{ needs.check-tag.outputs.tag }}"
+          python3 - "$tag" > dist/notes.md <<'PY'
+          import re, sys
+          version = sys.argv[1].lstrip("v")
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          match = re.search(rf"^## {re.escape(version)}\b.*?(?=^## |\Z)", text, re.S | re.M)
+          body = match.group(0).strip() if match else f"## {version}"
+          print(body)
+          print()
+          print("Unsigned Windows and Linux builds; the Android APKs are signed (see the APK file name: `-citestkey` means a throw-away test key). Verify the files with SHA256SUMS. Source code of this exact version: the tag in the repository (AGPL-3.0-only).")
+          PY
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ needs.check-tag.outputs.tag }}"
+          if gh release view "$tag" > /dev/null 2>&1; then
+            gh release upload "$tag" dist/release/* --clobber
+          else
+            gh release create "$tag" dist/release/* --title "ZHeroDiZk ${tag#v}" --notes-file dist/notes.md --prerelease --verify-tag
+          fi
