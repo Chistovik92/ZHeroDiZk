@@ -6,6 +6,22 @@
 Дорожная карта и версии: [ROADMAP.md](ROADMAP.md).
 PR: https://github.com/Chistovik92/ZHeroDiZk/pull/2.
 
+## Проверки 0.7.6 — сбор лицензий
+
+Код: `a412895fc8000fbdedb69ea89bbaa514034eb645`.
+Локально прошли 92 Python-теста, `compileall`, проверка lock-файла и `git diff --check`.
+В CI прошли [source-checks](https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37154131369),
+[Rust-тесты с PostgreSQL и Clippy](https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37154131359),
+[полная Linux-сборка](https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37154131560) и
+[полная Windows-сборка](https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37154133340).
+
+Скачанные SBOM проверены отдельно: Linux — 982 компонента (753 Cargo, 214 Dart, 15 vcpkg),
+Windows — 808 (578 Cargo, 214 Dart, 16 vcpkg). В каждом отчёте тексты лицензий есть у 211 Dart-пакетов
+и всех пакетов vcpkg; 12 компонентов остаются UNKNOWN (9 Rust и 3 пакета Flutter SDK).
+Пункт 0.1.7 закрыт как сбор лицензионных данных; юридическая проверка неизвестных лицензий не завершена.
+Сборки проверяют бинарники и отчёты, но не подтверждают работу удалённых сеансов на реальных устройствах.
+Выпуск содержит исходники и SBOM, без новых установщиков.
+
 ## Подтверждённая сборка Linux-клиента
 
 Коммит: `1fc6aca249bd15323e265dca765b469b4f9a8d4c`.
