@@ -27,7 +27,8 @@ ZHeroDiZk/
 ├── packaging/              пакеты сервера: systemd, deb, rpm, Docker, скрипты сборки
 ├── crates/
 │   ├── access-policy/      Rust-библиотека правил доступа (zherodizk-access-policy)
-│   └── control/            сервер управления (zherodizk-control): src, migrations, tests
+│   ├── control/            сервер управления (zherodizk-control): src, migrations, tests
+│   └── grant/              подписанные разрешения на сеанс (zherodizk-grant)
 ├── tools/                  служебные скрипты (Python, только stdlib)
 │   ├── doctor.py           диагностика Linux/X11, проверка libxdo
 │   ├── bootstrap.py        получение закреплённого исходного клиента в НОВЫЙ каталог

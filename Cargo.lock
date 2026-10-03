@@ -2394,11 +2394,11 @@ dependencies = [
 
 [[package]]
 name = "zherodizk-access-policy"
-version = "0.4.0"
+version = "0.5.1"
 
 [[package]]
 name = "zherodizk-control"
-version = "0.4.0"
+version = "0.5.1"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -2421,6 +2421,22 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "zherodizk-access-policy",
+ "zherodizk-grant",
+]
+
+[[package]]
+name = "zherodizk-grant"
+version = "0.5.1"
+dependencies = [
+ "base64",
+ "ed25519-dalek",
+ "rand",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 1.0.69",
+ "zherodizk-access-policy",
 ]
 
 [[package]]

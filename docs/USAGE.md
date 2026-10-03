@@ -63,7 +63,9 @@ python3 zherodizk.py             # диагностика, затем запус
 cargo build --release -p zherodizk-control
 export ZHD_DATABASE_URL=postgres://zhd:пароль@localhost/zhd
 export ZHD_LISTEN=127.0.0.1:21114          # по умолчанию
-export ZHD_MFA_KEY=$(head -c 32 /dev/urandom | base64)   # включает MFA; хранить в секрете
+./target/release/zherodizk-control generate-keys          # печатает ZHD_MFA_KEY и ZHD_GRANT_KEY
+export ZHD_MFA_KEY=...        # включает MFA; хранить в секрете, потеря делает секреты MFA непригодными
+export ZHD_GRANT_KEY=...      # ключ подписи разрешений на сеанс; хранить в секрете
 ./target/release/zherodizk-control
 ```
 
