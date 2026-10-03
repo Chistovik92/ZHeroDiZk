@@ -11,6 +11,7 @@ pub mod crypto;
 pub mod devices;
 pub mod grants;
 pub mod groups;
+pub mod limiter;
 pub mod orgs;
 pub mod password;
 pub mod totp;
@@ -33,6 +34,11 @@ pub struct AuthSettings {
     pub mfa_key: Option<[u8; crypto::KEY_LEN]>,
     /// Seed of the Ed25519 key that signs session grants; without it grant endpoints answer 503.
     pub grant_key: Option<[u8; 32]>,
+    /// Requests per minute and address allowed on anonymous endpoints (register, login, second
+    /// factor, device enrolment); 0 turns the limit off.
+    pub auth_rate_limit: u32,
+    /// Take the client address from `X-Forwarded-For` (only behind a trusted reverse proxy).
+    pub trust_forwarded_for: bool,
     /// Seconds added to the real clock when checking one-time codes. Always 0 in production;
     /// tests move it to step through TOTP periods without waiting.
     pub time_offset: Arc<AtomicI64>,
@@ -60,6 +66,8 @@ impl Default for AuthSettings {
             lockout_secs: 15 * 60,
             mfa_key: None,
             grant_key: None,
+            auth_rate_limit: 30,
+            trust_forwarded_for: false,
             time_offset: Arc::new(AtomicI64::new(0)),
         }
     }
@@ -78,8 +86,18 @@ struct Health {
 }
 
 pub fn router(state: AppState) -> Router {
+    let max = if state.settings.auth_rate_limit == 0 { u32::MAX } else { state.settings.auth_rate_limit };
+    let limit = limiter::LimitState {
+        limiter: Arc::new(limiter::RateLimiter::new(max, 60)),
+        trust_forwarded_for: state.settings.trust_forwarded_for,
+        time_offset: state.settings.time_offset.clone(),
+    };
+    let anonymous = auth::anonymous_routes()
+        .merge(devices::anonymous_routes())
+        .layer(axum::middleware::from_fn_with_state(limit, limiter::limit_anonymous));
     Router::new()
         .route("/healthz", get(healthz))
+        .merge(anonymous)
         .merge(auth::routes())
         .merge(orgs::routes())
         .merge(devices::routes())

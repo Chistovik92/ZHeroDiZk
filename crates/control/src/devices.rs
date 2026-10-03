@@ -25,9 +25,13 @@ use crate::{
 
 pub const PLATFORMS: [&str; 5] = ["windows", "linux", "android", "macos", "ios"];
 
+/// Device enrolment needs no session, so it is rate-limited like the other anonymous endpoints.
+pub fn anonymous_routes() -> Router<AppState> {
+    Router::new().route("/v1/devices/enroll", post(enroll))
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/v1/devices/enroll", post(enroll))
         .route("/v1/orgs/:org/devices", get(list_devices))
         .route("/v1/orgs/:org/devices/:device/revoke", post(revoke_device))
 }
