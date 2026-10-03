@@ -16,7 +16,9 @@ PR: https://github.com/Chistovik92/ZHeroDiZk/pull/2.
 - Python-тесты (93) и проверка lock — [https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37157784682](https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37157784682).
 - Ключ подписи Android создан автором проекта (RSA 4096, срок до 2056 года), копия вне репозитория. Отпечаток сертификата SHA-256: `B1:6F:0C:F1:D8:ED:08:7B:52:5A:FB:25:27:11:B9:41:CC:98:0C:1C:2D:49:51:D5:B7:C6:08:CE:78:FD:0D:39`.
 
-Не проверялось: работа панели с живым сервером в браузере, установка и запуск APK на телефоне, workflow `release.yml` целиком (первый запуск — выпуск 0.7.7).
+Выпуск v0.7.7 (https://github.com/Chistovik92/ZHeroDiZk/releases/tag/v0.7.7) собран workflow `release.yml` ([https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37159782186](https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37159782186)): 20 файлов и `SHA256SUMS`; APK подписаны временным ключом `-citestkey` (секреты постоянного ключа ещё не установлены).
+
+Не проверялось: работа панели с живым сервером в браузере, установка и запуск APK, пакетов и клиентов на реальных устройствах.
 
 ## Проверки 0.7.6 — сбор лицензий
 
