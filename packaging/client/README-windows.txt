@@ -20,4 +20,4 @@ Licence and source code
 - AGPL-3.0-only for the new code; third-party notices are in NOTICE. The complete corresponding
   source code (this repository at the release tag, plus the pinned upstream sources named in
   upstream.lock.json) is at https://github.com/Chistovik92/ZHeroDiZk
-- Author: SecretHero (Telegram @SecretHero).
+- Author: SecretHero (Telegram: https://t.me/SecretHero).

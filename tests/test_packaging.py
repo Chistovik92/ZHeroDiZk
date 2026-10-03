@@ -138,6 +138,6 @@ class ClientPackagingTests(unittest.TestCase):
         for name in ("README-linux.txt", "README-windows.txt"):
             text = (CLIENT / name).read_text(encoding="utf-8")
             for needle in ("TEST BUILD", "NOT a finished product", "does not enforce managed session grants",
-                           "no default server", "AGPL-3.0-only", "@SecretHero"):
+                           "no default server", "AGPL-3.0-only", "t.me/SecretHero"):
                 self.assertIn(needle, text, f"{name}: {needle}")
         self.assertIn("NOT code-signed", (CLIENT / "README-windows.txt").read_text(encoding="utf-8"))
