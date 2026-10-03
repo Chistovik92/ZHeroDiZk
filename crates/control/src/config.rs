@@ -11,6 +11,8 @@ pub struct Config {
     pub database_url: String,
     /// Whether accounts other than the very first one may be created through the API.
     pub allow_registration: bool,
+    /// 32-byte key (base64) used to encrypt TOTP secrets; MFA is unavailable without it.
+    pub mfa_key: Option<[u8; 32]>,
 }
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -21,6 +23,8 @@ pub enum ConfigError {
     InvalidListen(String),
     #[error("ZHD_ALLOW_REGISTRATION must be true or false, got: {0}")]
     InvalidFlag(String),
+    #[error("ZHD_MFA_KEY must be 32 bytes encoded as standard base64")]
+    InvalidMfaKey,
 }
 
 impl Config {
@@ -43,7 +47,15 @@ impl Config {
             Some(v) if v == "true" || v == "1" => true,
             Some(other) => return Err(ConfigError::InvalidFlag(other)),
         };
-        Ok(Self { listen, database_url, allow_registration })
+        let mfa_key = match get("ZHD_MFA_KEY").map(|v| v.trim().to_owned()).filter(|v| !v.is_empty()) {
+            None => None,
+            Some(text) => {
+                use base64::{engine::general_purpose::STANDARD, Engine};
+                let bytes = STANDARD.decode(text).map_err(|_| ConfigError::InvalidMfaKey)?;
+                Some(<[u8; 32]>::try_from(bytes.as_slice()).map_err(|_| ConfigError::InvalidMfaKey)?)
+            }
+        };
+        Ok(Self { listen, database_url, allow_registration, mfa_key })
     }
 
     pub fn from_env() -> Result<Self, ConfigError> {
@@ -91,6 +103,18 @@ mod tests {
             ("ZHD_LISTEN", "not-an-address"),
         ]));
         assert_eq!(bad, Err(ConfigError::InvalidListen("not-an-address".into())));
+    }
+
+    #[test]
+    fn mfa_key_must_be_32_bytes_of_base64() {
+        let base = ("ZHD_DATABASE_URL", "postgres://x");
+        assert_eq!(Config::from_lookup(lookup(&[base])).unwrap().mfa_key, None);
+        // 32 bytes of 0x01
+        let good = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=";
+        assert_eq!(Config::from_lookup(lookup(&[base, ("ZHD_MFA_KEY", good)])).unwrap().mfa_key, Some([1u8; 32]));
+        for bad in ["not base64!", "AQEB", "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="] {
+            assert_eq!(Config::from_lookup(lookup(&[base, ("ZHD_MFA_KEY", bad)])), Err(ConfigError::InvalidMfaKey), "{bad}");
+        }
     }
 
     #[test]

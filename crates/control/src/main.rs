@@ -11,6 +11,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let pool = connect_and_migrate(&config.database_url).await?;
     let settings = AuthSettings {
         allow_registration: config.allow_registration,
+        mfa_key: config.mfa_key,
         ..AuthSettings::default()
     };
     let listener = tokio::net::TcpListener::bind(config.listen).await?;

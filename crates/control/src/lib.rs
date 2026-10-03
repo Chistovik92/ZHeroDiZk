@@ -4,7 +4,11 @@
 
 pub mod auth;
 pub mod config;
+pub mod crypto;
 pub mod password;
+pub mod totp;
+
+use std::sync::{atomic::AtomicI64, Arc};
 
 use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
 use serde::Serialize;
@@ -12,12 +16,29 @@ use sqlx::{postgres::PgPoolOptions, Connection, PgConnection, PgPool};
 
 /// Account-related limits. Defaults: registration closed after the first account,
 /// 12-hour sessions, 5 failed logins lock the account for 15 minutes.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct AuthSettings {
     pub allow_registration: bool,
     pub session_ttl_secs: i64,
     pub max_failed_attempts: i32,
     pub lockout_secs: i64,
+    /// Key that encrypts TOTP secrets at rest; without it MFA endpoints answer 503.
+    pub mfa_key: Option<[u8; crypto::KEY_LEN]>,
+    /// Seconds added to the real clock when checking one-time codes. Always 0 in production;
+    /// tests move it to step through TOTP periods without waiting.
+    pub time_offset: Arc<AtomicI64>,
+}
+
+impl std::fmt::Debug for AuthSettings {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AuthSettings")
+            .field("allow_registration", &self.allow_registration)
+            .field("session_ttl_secs", &self.session_ttl_secs)
+            .field("max_failed_attempts", &self.max_failed_attempts)
+            .field("lockout_secs", &self.lockout_secs)
+            .field("mfa_key", &self.mfa_key.map(|_| "<redacted>"))
+            .finish()
+    }
 }
 
 impl Default for AuthSettings {
@@ -27,6 +48,8 @@ impl Default for AuthSettings {
             session_ttl_secs: 12 * 3600,
             max_failed_attempts: 5,
             lockout_secs: 15 * 60,
+            mfa_key: None,
+            time_offset: Arc::new(AtomicI64::new(0)),
         }
     }
 }
