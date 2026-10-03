@@ -110,6 +110,30 @@ class BootstrapTests(unittest.TestCase):
             with self.assertRaises(FileExistsError): bootstrap.checkout(client, dest)
             self.assertEqual((dest / "user-work").read_text(), "preserve")
 
+    def test_server_lock_validation(self):
+        lock = self.lock()
+        lock["server"] = {"url": "https://github.com/rustdesk/rustdesk-server.git", "commit": "b" * 40}
+        self.assertEqual(bootstrap.validate_server_lock(lock)["commit"], "b" * 40)
+        lock["server"]["commit"] = "1.1.16"
+        with self.assertRaises(ValueError): bootstrap.validate_server_lock(lock)
+        lock["server"]["commit"] = "b" * 40; lock["server"]["url"] = "https://example.com/s.git"
+        with self.assertRaises(ValueError): bootstrap.validate_server_lock(lock)
+
+    def test_real_lock_has_pinned_server(self):
+        lock = json.loads((bootstrap.ROOT / "upstream.lock.json").read_text(encoding="utf-8"))
+        self.assertRegex(bootstrap.validate_server_lock(lock)["commit"], "^[0-9a-f]{40}$")
+
+    def test_checkout_uses_custom_licence_file_name(self):
+        with tempfile.TemporaryDirectory() as temp:
+            origin = Path(temp) / "origin"; origin.mkdir()
+            bootstrap.git(origin, "init")
+            (origin / "LICENSE").write_text("fixture only")
+            bootstrap.git(origin, "add", "LICENSE")
+            bootstrap.git(origin, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-m", "fixture")
+            sha = bootstrap.git(origin, "rev-parse", "HEAD")
+            server = {"url": str(origin), "commit": sha, "license_file": "LICENSE"}
+            self.assertEqual(bootstrap.checkout(server, Path(temp) / "srv"), sha)
+
     def test_existing_empty_directory_is_not_reused(self):
         with tempfile.TemporaryDirectory() as temp:
             with self.assertRaises(FileExistsError):

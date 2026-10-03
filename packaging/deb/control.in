@@ -1,0 +1,12 @@
+Package: zherodizk-server
+Version: @VERSION@
+Section: net
+Priority: optional
+Depends: adduser
+Architecture: @ARCH@
+Maintainer: SecretHero <noreply@users.noreply.github.com>
+Homepage: https://github.com/Chistovik92/ZHeroDiZk
+Description: ZHeroDiZk rendezvous and relay servers
+ Static builds of the ZHeroDiZk rendezvous server (zhd-rendezvous), relay
+ server (zhd-relay) and the key utility (zhd-utils), with systemd units.
+ Development build: not a finished product, see the project status page.

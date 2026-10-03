@@ -1,0 +1,30 @@
+[Unit]
+Description=ZHeroDiZk relay server
+Documentation=https://github.com/Chistovik92/ZHeroDiZk/blob/main/docs/SERVER.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=zherodizk
+Group=zherodizk
+WorkingDirectory=/var/lib/zherodizk
+EnvironmentFile=-/etc/zherodizk/server.env
+ExecStart=/usr/bin/zhd-relay $ZHD_RELAY_ARGS
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=1000000
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/var/lib/zherodizk
+
+[Install]
+WantedBy=multi-user.target

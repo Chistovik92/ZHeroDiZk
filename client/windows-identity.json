@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "profile": "zherodizk",
+  "platform": "windows",
+  "display_name": "ZHeroDiZk",
+  "binary_name": "zherodizk",
+  "changes": [
+    {
+      "path": "libs/hbb_common/src/config.rs",
+      "before": "pub static ref APP_NAME: RwLock<String> = RwLock::new(\"RustDesk\".to_owned());",
+      "after": "pub static ref APP_NAME: RwLock<String> = RwLock::new(\"ZHeroDiZk\".to_owned());"
+    },
+    {
+      "path": "flutter/windows/CMakeLists.txt",
+      "before": "set(BINARY_NAME \"rustdesk\")",
+      "after": "set(BINARY_NAME \"zherodizk\")"
+    },
+    {
+      "path": "flutter/windows/CMakeLists.txt",
+      "before": "project(rustdesk LANGUAGES CXX)",
+      "after": "project(zherodizk LANGUAGES CXX)"
+    },
+    {
+      "path": "flutter/windows/runner/Runner.rc",
+      "before": "VALUE \"CompanyName\", \"Purslane Ltd\" \"\\0\"",
+      "after": "VALUE \"CompanyName\", \"SecretHero\" \"\\0\""
+    },
+    {
+      "path": "flutter/windows/runner/Runner.rc",
+      "before": "VALUE \"FileDescription\", \"RustDesk Remote Desktop\" \"\\0\"",
+      "after": "VALUE \"FileDescription\", \"ZHeroDiZk Remote Desktop\" \"\\0\""
+    },
+    {
+      "path": "flutter/windows/runner/Runner.rc",
+      "before": "VALUE \"InternalName\", \"rustdesk\" \"\\0\"",
+      "after": "VALUE \"InternalName\", \"zherodizk\" \"\\0\""
+    },
+    {
+      "path": "flutter/windows/runner/Runner.rc",
+      "before": "VALUE \"LegalCopyright\", \"Copyright © 2025 Purslane Ltd. All rights reserved.\" \"\\0\"",
+      "after": "VALUE \"LegalCopyright\", \"Copyright © 2026 SecretHero. AGPL-3.0; third-party notices are in the NOTICE file.\" \"\\0\""
+    },
+    {
+      "path": "flutter/windows/runner/Runner.rc",
+      "before": "VALUE \"OriginalFilename\", \"rustdesk.exe\" \"\\0\"",
+      "after": "VALUE \"OriginalFilename\", \"zherodizk.exe\" \"\\0\""
+    },
+    {
+      "path": "flutter/windows/runner/Runner.rc",
+      "before": "VALUE \"ProductName\", \"RustDesk\" \"\\0\"",
+      "after": "VALUE \"ProductName\", \"ZHeroDiZk\" \"\\0\""
+    },
+    {
+      "path": "flutter/windows/runner/main.cpp",
+      "before": "std::wstring app_name = L\"RustDesk\";",
+      "after": "std::wstring app_name = L\"ZHeroDiZk\";"
+    }
+  ]
+}
