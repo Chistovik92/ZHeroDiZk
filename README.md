@@ -2,7 +2,7 @@
 
 [![Проверки исходников](https://github.com/Chistovik92/ZHeroDiZk/actions/workflows/checks.yml/badge.svg)](https://github.com/Chistovik92/ZHeroDiZk/actions/workflows/checks.yml)
 
-**Версия: 0.1.5 (пре-релиз) · Автор: SecretHero ([Telegram @SecretHero](https://t.me/SecretHero)) · Лицензия: AGPL-3.0-only**
+**Версия: 0.3.4 (пре-релиз) · Автор: SecretHero ([Telegram @SecretHero](https://t.me/SecretHero)) · Лицензия: AGPL-3.0-only**
 
 ZHeroDiZk — открытый проект удалённого доступа в классе RustDesk и AnyDesk:
 собственный сервер на Linux и клиенты для Windows, Linux, Android, macOS и iOS,
@@ -40,7 +40,7 @@ ZHeroDiZk — открытый проект удалённого доступа 
 | Библиотека правил доступа `access-policy` (Rust, 17 тестов) | ✅ как модуль; ⬜ не встроена в клиент |
 | Сборка Linux-клиента в Actions | ✅ (запуск на `1fc6aca`) |
 | Собственная идентичность Linux-клиента | ✅ сборка на `9f8f7a1` прошла в CI (проверка по бинарнику) |
-| Клиент Windows | 🟡 0.2.0: сборка и идентичность проверяются в CI |
+| Клиент Windows | 🟡 собирается в CI с идентичностью ZHeroDiZk (0.2.1–0.2.2); запуск на Windows не проверялся |
 | Сервер встреч и ретрансляции (`zhd-rendezvous`, `zhd-relay`) | 🟡 собирается, устанавливается из пакетов (8 дистрибутивов), Docker; готовых пакетов для скачивания нет — [docs/SERVER.md](docs/SERVER.md) |
 | Сервер управления, аккаунты, MFA, PostgreSQL | ⬜ 0.4.0 |
 | Управляемые сеансы | ⬜ 0.5.0 |
