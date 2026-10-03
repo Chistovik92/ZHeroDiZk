@@ -2394,11 +2394,11 @@ dependencies = [
 
 [[package]]
 name = "zherodizk-access-policy"
-version = "0.5.1"
+version = "0.5.2"
 
 [[package]]
 name = "zherodizk-control"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -2427,7 +2427,7 @@ dependencies = [
 
 [[package]]
 name = "zherodizk-grant"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "base64",
  "ed25519-dalek",

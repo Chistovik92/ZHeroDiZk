@@ -2,6 +2,11 @@ name: Linux client
 
 on:
   workflow_dispatch:
+    inputs:
+      package:
+        description: 'Also build installable packages and keep them as a build artifact (test releases)'
+        type: boolean
+        default: false
   push:
     branches: [codex/linux-client-identity]
     paths:
@@ -169,7 +174,23 @@ jobs:
           python3 tools/sbom.py --cargo-metadata dist/build-report/cargo-metadata.json             --pubspec-lock vendor/client/flutter/pubspec.lock             --output dist/build-report/sbom.cdx.json | tee dist/build-report/sbom-summary.txt
           rm dist/build-report/cargo-metadata.json
 
-      # Only diagnostic evidence is uploaded. Executables stay on the runner
+      - name: Build installable packages (test releases only)
+        if: inputs.package
+        run: |
+          sudo apt-get install -y rpm
+          version=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          sh packaging/client/build-linux-client.sh vendor/client/flutter/build/linux/x64/release/bundle "$version" dist/packages
+          (cd dist/packages && sha256sum -- * > SHA256SUMS && cat SHA256SUMS)
+
+      - name: Keep the packages for the release
+        if: inputs.package
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-client-dist
+          path: dist/packages/
+          retention-days: 7
+
+      # Diagnostic evidence is always uploaded; packages only for explicit test releases (package=true). Executables otherwise stay on the runner
       # until the project's source/license/security release gates are complete.
       - name: Upload build evidence
         if: always()

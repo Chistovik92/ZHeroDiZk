@@ -1,0 +1,3 @@
+#!/bin/sh
+# Starts the ZHeroDiZk client through the diagnostic launcher (checks libxdo and the display first).
+exec python3 /opt/zherodizk/zherodizk.py "$@"

@@ -110,3 +110,34 @@ class ControlPackagingTests(unittest.TestCase):
             body = (ROOT / name).read_text(encoding="utf-8")
             self.assertTrue(body.startswith("#!/bin/sh"), name)
             self.assertIn("set -eu", body)
+
+
+CLIENT = ROOT / "client"
+
+
+class ClientPackagingTests(unittest.TestCase):
+    def test_wrapper_starts_the_diagnostic_launcher_from_the_install_directory(self):
+        wrapper = (CLIENT / "zherodizk-wrapper").read_text(encoding="utf-8")
+        self.assertTrue(wrapper.startswith("#!/bin/sh"))
+        self.assertIn("/opt/zherodizk/zherodizk.py", wrapper)
+
+    def test_deb_and_rpm_install_the_same_places(self):
+        script = (CLIENT / "build-linux-client.sh").read_text(encoding="utf-8")
+        spec = (CLIENT / "zherodizk-client.spec").read_text(encoding="utf-8")
+        for needle in ("/opt/zherodizk", "/usr/bin/zherodizk", "zherodizk.desktop", "zherodizk.png"):
+            self.assertIn(needle, script, needle)
+            self.assertIn(needle, spec, needle)
+        self.assertIn("set -eu", script)
+
+    def test_dependencies_include_the_libraries_found_in_the_ci_report(self):
+        control = (CLIENT / "control.in").read_text(encoding="utf-8")
+        for library in ("libgtk-3-0", "libxdo3", "python3", "libpulse0", "libxcb-randr0"):
+            self.assertIn(library, control)
+
+    def test_readmes_state_the_limits_honestly(self):
+        for name in ("README-linux.txt", "README-windows.txt"):
+            text = (CLIENT / name).read_text(encoding="utf-8")
+            for needle in ("TEST BUILD", "NOT a finished product", "does not enforce managed session grants",
+                           "no default server", "AGPL-3.0-only", "@SecretHero"):
+                self.assertIn(needle, text, f"{name}: {needle}")
+        self.assertIn("NOT code-signed", (CLIENT / "README-windows.txt").read_text(encoding="utf-8"))

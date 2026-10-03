@@ -111,10 +111,28 @@ sh packaging/build-rpm.sh <каталог-с-бинарниками> <верси
 Исходники и тесты — `crates/control`, интерфейс — [api/openapi.yaml](api/openapi.yaml), запуск для испытаний —
 [USAGE.md](USAGE.md). Переменные окружения: `ZHD_DATABASE_URL` (обязательно), `ZHD_LISTEN` (по умолчанию
 `127.0.0.1:21114`), `ZHD_ALLOW_REGISTRATION` (`true`/`false`), `ZHD_MFA_KEY` (32 байта в base64; без него MFA отвечает 503), `ZHD_GRANT_KEY` (32 байта в base64, ключ подписи разрешений; без него выдача отвечает 503). Ключи создаёт `zherodizk-control generate-keys` (печатает, ничего не сохраняет).
-Пакеты, systemd-юнит и Docker-образ для него пока не сделаны, TLS не реализован (нужен обратный прокси).
+Пакеты (`zherodizk-control`: deb, rpm, tarball для x86_64 и aarch64), юнит systemd и Docker Compose с PostgreSQL собираются и
+проверяются в CI (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37092687297); готовых пакетов для скачивания нет. TLS не реализован — только за обратным прокси
+(`/usr/share/doc/zherodizk-control/Caddyfile`, `nginx.conf`).
+
+### Установка пакета сервера управления (после появления пакетов)
+
+```bash
+sudo apt install ./zherodizk-control_<версия>_amd64.deb      # Debian/Ubuntu; для rpm: dnf install / rpm -i
+sudo -u postgres psql -c "CREATE ROLE zherodizk LOGIN PASSWORD 'длинный-пароль'"
+sudo -u postgres psql -c "CREATE DATABASE zherodizk OWNER zherodizk"
+zherodizk-control generate-keys                              # скопируйте ключи в файл настроек
+sudoedit /etc/zherodizk/control.env                          # база, ключи, ZHD_TRUST_FORWARDED_FOR при прокси
+sudo systemctl enable --now zherodizk-control
+curl http://127.0.0.1:21114/healthz
+```
+
+Docker: `docker build -f packaging/control/Dockerfile --build-arg BIN=bin/zherodizk-control -t zherodizk-control:local .`, затем
+`.env` с `POSTGRES_PASSWORD`, `ZHD_MFA_KEY`, `ZHD_GRANT_KEY` и `docker compose -f packaging/control/docker-compose.yml up -d`
+(порт публикуется только на 127.0.0.1).
 
 ## Чего ещё нет
 
-Упаковка сервера управления и TLS; панель — 0.6.0; метрики и
+Встроенный TLS сервера управления; подписанные пакеты; панель — 0.6.0; метрики и
 нагрузочные испытания — 0.3.6; подписанные пакеты и репозиторий пакетов; пакет apk для Alpine.
 Стоимость серверов и трафика ложится на того, кто разворачивает сервер.

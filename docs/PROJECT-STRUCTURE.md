@@ -18,13 +18,16 @@ ZHeroDiZk/
 │   ├── client-linux.yml    полная сборка Linux-клиента (запуск вручную)
 │   ├── client-windows.yml  сборка Windows-клиента (вручную и на ветке claude/windows-client)
 │   ├── server-linux.yml    сборка, пакеты и установочные тесты сервера встреч и ретрансляции
-│   └── control.yml         тесты и clippy сервера управления на PostgreSQL
+│   ├── control.yml         тесты и clippy сервера управления и библиотеки разрешений на PostgreSQL
+│   └── control-packages.yml  пакеты сервера управления, установка, запуск, Docker Compose
 ├── client/
 │   ├── linux-identity.json   манифест замен идентичности Linux-клиента
-│   └── windows-identity.json манифест замен идентичности Windows-клиента
+│   ├── windows-identity.json манифест замен идентичности Windows-клиента
+│   ├── common-identity.json  общие замены: чужие адреса, ключи, проверка обновлений, видимые строки, логотип
+│   └── branding/             значок ZHeroDiZk (app_icon.ico, icon.svg), создаётся tools/make_icons.py
 ├── server/
 │   └── identity.json         манифест замен идентичности серверной части
-├── packaging/              пакеты сервера: systemd, deb, rpm, Docker, скрипты сборки
+├── packaging/              пакеты: server, control, client (тестовые сборки), arch, common, systemd, deb, rpm, Docker, скрипты
 ├── crates/
 │   ├── access-policy/      Rust-библиотека правил доступа (zherodizk-access-policy)
 │   ├── control/            сервер управления (zherodizk-control): src, migrations, tests
@@ -35,6 +38,7 @@ ZHeroDiZk/
 │   ├── prepare_client.py   проверка чистоты и подготовка checkout к сборке
 │   ├── apply_patch_once.py идемпотентное применение патча к Flutter SDK
 │   ├── prepare_server.py   проверка и подготовка серверных исходников
+│   ├── make_icons.py       генерация значка ZHeroDiZk (ICO, SVG, PNG), без сторонних библиотек
 │   ├── check_client_network.py    проверка собранных файлов на чужие адреса и ключи
 │   ├── check_windows_identity.py  проверка идентичности Windows по собранным файлам
 │   ├── sbom.py             SBOM (CycloneDX) и сводка лицензий

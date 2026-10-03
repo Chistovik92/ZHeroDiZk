@@ -3,6 +3,13 @@
 Автор: SecretHero. Формат версий — [docs/VERSIONING.md](docs/VERSIONING.md).
 Выпущены пре-релизы v0.1.1–v0.1.5 и v0.3.4 (только исходный код): https://github.com/Chistovik92/ZHeroDiZk/releases
 
+## 0.5.2 — выпущено (v0.5.2; включает 0.4.7, 0.4.8, часть 0.2.4 и тестовые установщики)
+
+- **0.4.7** Ограничение частоты анонимных запросов по адресу (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37085451401).
+- **0.4.8** Пакеты `zherodizk-control`, юнит systemd, Docker Compose, примеры TLS-прокси; установка на 8 дистрибутивах, запуск с настоящим PostgreSQL и через Compose проверены в CI (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37092687297).
+- **0.2.4 (часть)** Значок ZHeroDiZk и видимые строки в клиентах; `prepare_client` заменяет файлы целиком (проверка хэша оригинала, откат при сбое). Linux https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37086311425, Windows https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37086313897.
+- **Тестовые установщики** (см. docs/TEST-BUILDS.md): клиент Windows (переносимый zip), клиент Linux (deb, rpm, tar.gz), серверы (deb, rpm, tar.gz). Не подписаны; клиент не проверялся запуском и не требует разрешений сервера.
+
 ## 0.5.1 — выпущено (v0.5.1)
 
 - `crates/grant`: подписанные Ed25519 разрешения на сеанс (`zhg1.<kid>.<payload>.<signature>`), проверка (подпись, доверенный ключ, срок не более 300 с, устройство), кеш повторов, `authorize_connection` поверх `access-policy`.

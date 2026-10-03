@@ -2,6 +2,11 @@ name: Control server packages
 
 on:
   workflow_dispatch:
+    inputs:
+      package:
+        description: 'Also build installable packages and keep them as a build artifact (test releases)'
+        type: boolean
+        default: false
   push:
     branches: ['claude/hardening', 'claude/control-packages']
     paths:
@@ -161,6 +166,14 @@ jobs:
           t fedora41 fedora:41 'dnf install -y /pkgs/*.rpm && id zherodizk-control && zherodizk-control generate-keys | grep -c ZHD_ | grep -qx 2 && echo OK'
           cat dist/build-report/distro-results.txt
           if grep -q '^FAIL' dist/build-report/distro-results.txt; then exit 1; fi
+
+      - name: Keep the packages for the release
+        if: inputs.package
+        uses: actions/upload-artifact@v4
+        with:
+          name: control-dist-${{ matrix.target }}
+          path: pkgs/
+          retention-days: 7
 
       - name: Upload build evidence
         if: always()

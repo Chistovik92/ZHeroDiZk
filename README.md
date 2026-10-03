@@ -2,7 +2,7 @@
 
 [![Проверки исходников](https://github.com/Chistovik92/ZHeroDiZk/actions/workflows/checks.yml/badge.svg)](https://github.com/Chistovik92/ZHeroDiZk/actions/workflows/checks.yml)
 
-**Версия: 0.5.1 (пре-релиз) · Автор: SecretHero ([Telegram @SecretHero](https://t.me/SecretHero)) · Лицензия: AGPL-3.0-only**
+**Версия: 0.5.2 (пре-релиз) · Автор: SecretHero ([Telegram @SecretHero](https://t.me/SecretHero)) · Лицензия: AGPL-3.0-only**
 
 ZHeroDiZk — открытый проект удалённого доступа в классе RustDesk и AnyDesk:
 собственный сервер на Linux и клиенты для Windows, Linux, Android, macOS и iOS,
@@ -97,6 +97,7 @@ python3 tools/doctor.py --json
 | [docs/SERVER.md](docs/SERVER.md) | сервер: планируемая установка и эксплуатация |
 | [docs/USAGE.md](docs/USAGE.md) | как пользоваться: сейчас и по плану |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | разработка, проверки, правила вклада |
+| [docs/TEST-BUILDS.md](docs/TEST-BUILDS.md) | тестовые установщики: что в выпуске, как проверять, о чём сообщать |
 | [docs/AGENT-INTEGRATION.md](docs/AGENT-INTEGRATION.md) | план встраивания проверки разрешений в клиент |
 | [docs/api/openapi.yaml](docs/api/openapi.yaml) | описание API сервера управления |
 | [docs/CLIENT-LINUX.md](docs/CLIENT-LINUX.md) | сборка и запуск Linux-клиента |

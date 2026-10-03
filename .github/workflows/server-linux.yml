@@ -2,6 +2,11 @@ name: Linux server
 
 on:
   workflow_dispatch:
+    inputs:
+      package:
+        description: 'Also build installable packages and keep them as a build artifact (test releases)'
+        type: boolean
+        default: false
   push:
     branches: ['claude/server-linux']
     paths:
@@ -211,6 +216,14 @@ jobs:
           (echo > /dev/tcp/127.0.0.1/21117) && echo "compose relay listens"
           docker compose -f packaging/docker/docker-compose.yml logs --no-color > dist/build-report/compose.log
           docker compose -f packaging/docker/docker-compose.yml down -v
+
+      - name: Keep the packages for the release
+        if: inputs.package
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-dist-${{ matrix.target }}
+          path: pkgs/
+          retention-days: 7
 
       - name: Upload build evidence
         if: always()
