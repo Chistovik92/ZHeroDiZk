@@ -3,6 +3,7 @@
 //! with sessions and MFA, organisations and device enrolment. There are no remote-access
 //! rights yet: nothing here lets anyone connect to a device.
 
+pub mod audit;
 pub mod auth;
 pub mod config;
 pub mod crypto;
@@ -77,6 +78,7 @@ pub fn router(state: AppState) -> Router {
         .merge(orgs::routes())
         .merge(devices::routes())
         .merge(groups::routes())
+        .merge(audit::routes())
         .with_state(state)
 }
 
@@ -124,3 +126,36 @@ pub async fn connect_and_migrate_in_schema(database_url: &str, schema: &str) -> 
     sqlx::migrate!("./migrations").run(&pool).await?;
     Ok(pool)
 }
+
+/// Every route the server exposes as (method, OpenAPI path). `docs/api/openapi.yaml` must
+/// describe exactly these; a test keeps the two in step.
+pub const API_ROUTES: &[(&str, &str)] = &[
+    ("GET", "/healthz"),
+    ("POST", "/v1/auth/register"),
+    ("POST", "/v1/auth/login"),
+    ("POST", "/v1/auth/login/mfa"),
+    ("POST", "/v1/auth/logout"),
+    ("GET", "/v1/auth/me"),
+    ("POST", "/v1/auth/mfa/enroll"),
+    ("POST", "/v1/auth/mfa/confirm"),
+    ("POST", "/v1/auth/mfa/disable"),
+    ("POST", "/v1/orgs"),
+    ("GET", "/v1/orgs"),
+    ("POST", "/v1/orgs/{org}/members"),
+    ("POST", "/v1/orgs/{org}/enrollment-tokens"),
+    ("GET", "/v1/orgs/{org}/audit"),
+    ("POST", "/v1/devices/enroll"),
+    ("GET", "/v1/orgs/{org}/devices"),
+    ("POST", "/v1/orgs/{org}/devices/{device}/revoke"),
+    ("GET", "/v1/orgs/{org}/devices/{device}/access"),
+    ("POST", "/v1/orgs/{org}/groups"),
+    ("GET", "/v1/orgs/{org}/groups"),
+    ("POST", "/v1/orgs/{org}/groups/{group}/devices"),
+    ("DELETE", "/v1/orgs/{org}/groups/{group}/devices/{device}"),
+    ("GET", "/v1/orgs/{org}/acl"),
+    ("PUT", "/v1/orgs/{org}/acl"),
+    ("DELETE", "/v1/orgs/{org}/acl/{user}/{group}"),
+    ("GET", "/v1/orgs/{org}/address-book"),
+    ("PUT", "/v1/orgs/{org}/address-book/{device}"),
+    ("DELETE", "/v1/orgs/{org}/address-book/{device}"),
+];

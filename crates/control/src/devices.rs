@@ -101,6 +101,7 @@ async fn enroll(State(state): State<AppState>, Json(body): Json<EnrollBody>) -> 
         }
         Err(other) => return Err(other.into()),
     }
+    crate::audit::record(&mut *tx, Some(org), None, "device.enrolled", Some(device_id.to_string()), serde_json::json!({ "name": name, "platform": body.platform })).await?;
     tx.commit().await?;
     Ok((StatusCode::CREATED, Json(EnrollOut { device_id, org_id: org })))
 }
@@ -152,6 +153,7 @@ async fn revoke_device(
     .await?
     .rows_affected();
     if changed == 1 {
+        crate::audit::record(&state.pool, Some(org), Some(who.user_id), "device.revoked", Some(device.to_string()), serde_json::json!({})).await?;
         Ok(StatusCode::NO_CONTENT)
     } else {
         Err(ApiError::NotFound("device not found"))

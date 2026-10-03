@@ -112,6 +112,7 @@ async fn create_org(
         .bind(who.user_id)
         .execute(&mut *tx)
         .await?;
+    crate::audit::record(&mut *tx, Some(id), Some(who.user_id), "org.created", Some(name.clone()), serde_json::json!({})).await?;
     tx.commit().await?;
     Ok((StatusCode::CREATED, Json(OrgOut { id, name, role: Role::Owner.as_str().into() })))
 }
@@ -164,7 +165,10 @@ async fn add_member(
         .execute(&state.pool)
         .await;
     match inserted {
-        Ok(_) => Ok(StatusCode::NO_CONTENT),
+        Ok(_) => {
+            crate::audit::record(&state.pool, Some(org), Some(who.user_id), "member.added", Some(email.clone()), serde_json::json!({ "role": wanted.as_str() })).await?;
+            Ok(StatusCode::NO_CONTENT)
+        }
         Err(sqlx::Error::Database(db)) if db.is_unique_violation() => {
             Err(ApiError::Conflict("the user is already a member"))
         }
@@ -197,6 +201,7 @@ async fn create_enrollment_token(
     .bind(ENROLLMENT_TTL_SECS as f64)
     .fetch_one(&state.pool)
     .await?;
+    crate::audit::record(&state.pool, Some(org), Some(who.user_id), "enrollment_token.created", None, serde_json::json!({ "expires_at": expires_at })).await?;
     Ok((StatusCode::CREATED, Json(TokenOut { token, expires_at })))
 }
 

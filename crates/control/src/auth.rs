@@ -175,6 +175,7 @@ async fn register(
         Err(sqlx::Error::Database(db)) if db.is_unique_violation() => return Err(ApiError::Conflict("an account with this email already exists")),
         Err(other) => return Err(other.into()),
     }
+    crate::audit::record(&mut *tx, None, Some(id), "user.registered", Some(email.clone()), serde_json::json!({})).await?;
     tx.commit().await?;
     Ok((StatusCode::CREATED, Json(UserOut { id, email })))
 }
@@ -196,6 +197,7 @@ async fn register_failure(state: &AppState, user_id: Uuid) -> Result<(), ApiErro
     .bind(state.settings.lockout_secs as f64)
     .execute(&state.pool)
     .await?;
+    crate::audit::record(&state.pool, None, Some(user_id), "auth.login_failed", None, serde_json::json!({})).await?;
     Ok(())
 }
 
@@ -262,6 +264,7 @@ async fn login(
         .execute(&mut *tx)
         .await?;
     let (token, expires_at) = create_session(&mut tx, user_id, "full", state.settings.session_ttl_secs).await?;
+    crate::audit::record(&mut *tx, None, Some(user_id), "auth.login", None, serde_json::json!({})).await?;
     tx.commit().await?;
     Ok(Json(LoginResponse::Session { token, expires_at }))
 }
@@ -423,6 +426,7 @@ async fn mfa_confirm(
             .execute(&mut *tx)
             .await?;
     }
+    crate::audit::record(&mut *tx, None, Some(who.user_id), "mfa.enabled", None, serde_json::json!({})).await?;
     tx.commit().await?;
     Ok(Json(RecoveryOut { recovery_codes: codes }))
 }
@@ -497,6 +501,7 @@ async fn login_mfa(State(state): State<AppState>, Json(body): Json<MfaLogin>) ->
         .execute(&mut *tx)
         .await?;
     let (token, expires_at) = create_session(&mut tx, user_id, "full", state.settings.session_ttl_secs).await?;
+    crate::audit::record(&mut *tx, None, Some(user_id), "auth.login", None, serde_json::json!({})).await?;
     tx.commit().await?;
     Ok(Json(LoginResponse::Session { token, expires_at }))
 }
@@ -539,6 +544,7 @@ async fn mfa_disable(
         .bind(who.user_id)
         .execute(&mut *tx)
         .await?;
+    crate::audit::record(&mut *tx, None, Some(who.user_id), "mfa.disabled", None, serde_json::json!({})).await?;
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }

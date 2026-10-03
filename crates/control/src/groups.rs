@@ -118,7 +118,10 @@ async fn create_group(
     .fetch_one(&state.pool)
     .await;
     match inserted {
-        Ok(created_at) => Ok((StatusCode::CREATED, Json(GroupOut { id, name, created_at }))),
+        Ok(created_at) => {
+            crate::audit::record(&state.pool, Some(org), Some(who.user_id), "group.created", Some(name.clone()), serde_json::json!({ "group_id": id })).await?;
+            Ok((StatusCode::CREATED, Json(GroupOut { id, name, created_at })))
+        }
         Err(sqlx::Error::Database(db)) if db.is_unique_violation() => {
             Err(ApiError::Conflict("a group with this name already exists"))
         }
@@ -162,6 +165,7 @@ async fn add_group_device(
         .bind(org)
         .execute(&state.pool)
         .await?;
+    crate::audit::record(&state.pool, Some(org), Some(who.user_id), "group.device_added", Some(group.to_string()), serde_json::json!({ "device_id": body.device_id })).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -180,6 +184,7 @@ async fn remove_group_device(
         .await?
         .rows_affected();
     if removed == 1 {
+        crate::audit::record(&state.pool, Some(org), Some(who.user_id), "group.device_removed", Some(group.to_string()), serde_json::json!({ "device_id": device })).await?;
         Ok(StatusCode::NO_CONTENT)
     } else {
         Err(ApiError::NotFound("membership not found"))
@@ -226,6 +231,7 @@ async fn put_acl(
     .bind(&capabilities)
     .execute(&state.pool)
     .await?;
+    crate::audit::record(&state.pool, Some(org), Some(who.user_id), "acl.set", Some(body.user_id.to_string()), serde_json::json!({ "group_id": body.group_id, "capabilities": capabilities })).await?;
     Ok(Json(AclOut { user_id: body.user_id, group_id: body.group_id, capabilities }))
 }
 
@@ -259,6 +265,7 @@ async fn delete_acl(
         .await?
         .rows_affected();
     if removed == 1 {
+        crate::audit::record(&state.pool, Some(org), Some(who.user_id), "acl.deleted", Some(user.to_string()), serde_json::json!({ "group_id": group })).await?;
         Ok(StatusCode::NO_CONTENT)
     } else {
         Err(ApiError::NotFound("rule not found"))
