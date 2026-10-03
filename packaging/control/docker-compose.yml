@@ -1,0 +1,40 @@
+# Control server with its own PostgreSQL. Create a .env file next to this file:
+#   POSTGRES_PASSWORD=<long random password>
+#   ZHD_MFA_KEY=...      (zherodizk-control generate-keys)
+#   ZHD_GRANT_KEY=...
+# Build the image first and tag it zherodizk-control:local (see the Dockerfile).
+# The port is published on loopback only: put a reverse proxy with TLS in front.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: zherodizk
+      POSTGRES_DB: zherodizk
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - zhd-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zherodizk"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+  control:
+    image: zherodizk-control:local
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ZHD_DATABASE_URL: postgres://zherodizk:${POSTGRES_PASSWORD}@db/zherodizk
+      ZHD_LISTEN: 0.0.0.0:21114
+      ZHD_ALLOW_REGISTRATION: "false"
+      ZHD_MFA_KEY: ${ZHD_MFA_KEY:-}
+      ZHD_GRANT_KEY: ${ZHD_GRANT_KEY:-}
+    ports:
+      - "127.0.0.1:21114:21114"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+volumes:
+  zhd-db:

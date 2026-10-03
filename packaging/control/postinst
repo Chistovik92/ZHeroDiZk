@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+    if ! getent passwd zherodizk-control >/dev/null; then
+        adduser --system --group --no-create-home --home /nonexistent \
+            --shell /usr/sbin/nologin --quiet zherodizk-control
+    fi
+    chown root:zherodizk-control /etc/zherodizk/control.env
+    chmod 0640 /etc/zherodizk/control.env
+    if [ -d /run/systemd/system ]; then systemctl daemon-reload || true; fi
+    echo "ZHeroDiZk control server: edit /etc/zherodizk/control.env (database, keys), then run:"
+    echo "  systemctl enable --now zherodizk-control"
+fi
+exit 0

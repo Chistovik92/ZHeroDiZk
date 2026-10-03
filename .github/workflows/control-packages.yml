@@ -1,0 +1,172 @@
+name: Control server packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/hardening', 'claude/control-packages']
+    paths:
+      - 'packaging/control/**'
+      - 'packaging/build-control-*.sh'
+      - '.github/workflows/control-packages.yml'
+      - 'crates/control/**'
+      - 'crates/grant/**'
+      - 'Cargo.lock'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: control-packages-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: '1.90.0'
+  CROSS_VERSION: '0.2.5'
+
+# Static musl builds of the control server, deb/rpm/tarball packages and install tests.
+# Only reports and checksums are kept; binaries stay on the runner.
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64-unknown-linux-musl, aarch64-unknown-linux-musl]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+
+      - name: Tests of the packaging files
+        run: python3 -m unittest tests.test_packaging
+
+      - name: Install Rust and cross
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal --target ${{ matrix.target }}
+          rustup default "$RUST_VERSION"
+          cargo install cross --version "$CROSS_VERSION" --locked
+
+      - name: Build static binary
+        run: cross build --locked --release -p zherodizk-control --target ${{ matrix.target }}
+
+      - name: Build packages
+        run: |
+          binary="$PWD/target/${{ matrix.target }}/release/zherodizk-control"
+          test -x "$binary"
+          file "$binary" | tee -a /dev/stderr | grep -q 'statically linked\|static-pie'
+          version=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          case "${{ matrix.target }}" in
+            x86_64-*) deb_arch=amd64; rpm_arch=x86_64; tar_arch=x86_64 ;;
+            aarch64-*) deb_arch=arm64; rpm_arch=aarch64; tar_arch=aarch64 ;;
+          esac
+          mkdir -p pkgs dist/build-report
+          sh packaging/build-control-deb.sh "$binary" "$version" "$deb_arch" pkgs
+          docker run --rm -v "$PWD:/w" -w /w fedora:41 sh -c "dnf install -y -q rpm-build >/dev/null && sh packaging/build-control-rpm.sh target/${{ matrix.target }}/release/zherodizk-control $version $rpm_arch pkgs"
+          sudo chown -R "$USER" pkgs
+          find pkgs -mindepth 2 -type f -name '*.rpm' -exec mv {} pkgs/ \;
+          find pkgs -mindepth 1 -type d -empty -delete
+          mkdir -p "tarball/zherodizk-control-$version-$tar_arch"
+          cp "$binary" LICENSE NOTICE packaging/control/control.env packaging/control/zherodizk-control.service packaging/control/Caddyfile packaging/control/nginx.conf "tarball/zherodizk-control-$version-$tar_arch/"
+          tar -C tarball -czf "pkgs/zherodizk-control-$version-linux-$tar_arch.tar.gz" "zherodizk-control-$version-$tar_arch"
+          (cd pkgs && sha256sum -- *.deb *.rpm *.tar.gz > "$GITHUB_WORKSPACE/dist/build-report/packages.sha256")
+          cat dist/build-report/packages.sha256
+          dpkg-deb --info pkgs/*.deb | tee dist/build-report/deb-info.txt
+          docker run --rm -v "$PWD/pkgs:/pkgs:ro" fedora:41 sh -c 'rpm -qpl /pkgs/*.rpm; rpm -qpi /pkgs/*.rpm' | tee dist/build-report/rpm-contents.txt
+
+      - name: Install and run on the runner with systemd and PostgreSQL (x86_64)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          sudo systemctl start postgresql
+          sudo -u postgres psql -c "CREATE ROLE zherodizk LOGIN PASSWORD 'pkg-test-only'"
+          sudo -u postgres psql -c "CREATE DATABASE zherodizk OWNER zherodizk"
+          sudo dpkg -i pkgs/*.deb
+          getent passwd zherodizk-control
+          test "$(stat -c %a /etc/zherodizk/control.env)" = 640
+          keys=$(zherodizk-control generate-keys)
+          sudo sed -i "s|^ZHD_DATABASE_URL=.*|ZHD_DATABASE_URL=postgres://zherodizk:pkg-test-only@127.0.0.1/zherodizk|" /etc/zherodizk/control.env
+          sudo sed -i "s|^ZHD_MFA_KEY=.*|$(echo "$keys" | grep ZHD_MFA_KEY)|; s|^ZHD_GRANT_KEY=.*|$(echo "$keys" | grep ZHD_GRANT_KEY)|" /etc/zherodizk/control.env
+          sudo systemd-analyze verify /lib/systemd/system/zherodizk-control.service
+          sudo systemctl start zherodizk-control
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:21114/healthz && break; sleep 1; done
+          curl -fsS http://127.0.0.1:21114/healthz | tee dist/build-report/healthz.json
+          ps -o user= -C zherodizk-control | sort -u | grep -qx zherodizk-control
+          # First account, login, public key for grants.
+          curl -fsS -X POST http://127.0.0.1:21114/v1/auth/register -H 'content-type: application/json' -d '{"email":"admin@example.org","password":"correct horse battery staple"}'
+          token=$(curl -fsS -X POST http://127.0.0.1:21114/v1/auth/login -H 'content-type: application/json' -d '{"email":"admin@example.org","password":"correct horse battery staple"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+          curl -fsS http://127.0.0.1:21114/v1/auth/me -H "authorization: Bearer $token"
+          curl -fsS http://127.0.0.1:21114/v1/grants/public-key | tee dist/build-report/public-key.json
+          # The second account is refused while registration is closed.
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:21114/v1/auth/register -H 'content-type: application/json' -d '{"email":"other@example.org","password":"correct horse battery staple"}')
+          test "$code" = 403
+          sudo journalctl -u zherodizk-control --no-pager | tail -20 | tee dist/build-report/journal.txt
+          sudo systemctl stop zherodizk-control
+          sudo apt-get remove -y zherodizk-control
+          test ! -e /usr/bin/zherodizk-control
+
+      - name: Install the packages in other distributions (x86_64)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          : > dist/build-report/distro-results.txt
+          mkdir -p dist/build-report/distro-logs
+          t() {
+            name=$1; img=$2; cmd=$3
+            if docker run --rm -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c "$cmd" > "dist/build-report/distro-logs/$name.log" 2>&1; then
+              echo "PASS $img" >> dist/build-report/distro-results.txt
+            else echo "FAIL $img" >> dist/build-report/distro-results.txt; fi
+          }
+          t debian12 debian:12 'apt-get update -qq && apt-get install -y /pkgs/*.deb && id zherodizk-control && zherodizk-control generate-keys | grep -c ZHD_ | grep -qx 2 && echo OK'
+          t ubuntu2204 ubuntu:22.04 'apt-get update -qq && apt-get install -y /pkgs/*.deb && id zherodizk-control && echo OK'
+          t ubuntu2404 ubuntu:24.04 'apt-get update -qq && apt-get install -y /pkgs/*.deb && id zherodizk-control && echo OK'
+          t rocky9 rockylinux:9 'dnf install -y /pkgs/*.rpm && id zherodizk-control && zherodizk-control generate-keys | grep -c ZHD_ | grep -qx 2 && echo OK'
+          t alma9 almalinux:9 'dnf install -y /pkgs/*.rpm && id zherodizk-control && echo OK'
+          t fedora41 fedora:41 'dnf install -y /pkgs/*.rpm && id zherodizk-control && echo OK'
+          t altp11 alt:p11 'rpm -i /pkgs/*.rpm && id zherodizk-control && echo OK'
+          t altp10 alt:p10 'rpm -i /pkgs/*.rpm && id zherodizk-control && echo OK'
+          t alpine alpine:3.20 'tar -xzf /pkgs/*.tar.gz -C /tmp && /tmp/zherodizk-control-*/zherodizk-control generate-keys | grep -c ZHD_ | grep -qx 2 && echo OK'
+          cat dist/build-report/distro-results.txt
+          if grep -q '^FAIL' dist/build-report/distro-results.txt; then exit 1; fi
+
+      - name: Docker image and Compose with PostgreSQL (x86_64)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          mkdir -p bin
+          cp target/${{ matrix.target }}/release/zherodizk-control bin/
+          docker build -f packaging/control/Dockerfile --build-arg BIN=bin/zherodizk-control -t zherodizk-control:local .
+          keys=$(bin/zherodizk-control generate-keys)
+          { echo "POSTGRES_PASSWORD=compose-test-only"; echo "$keys"; } > packaging/control/.env
+          docker compose -f packaging/control/docker-compose.yml up -d
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:21114/healthz && break; sleep 2; done
+          curl -fsS http://127.0.0.1:21114/healthz | tee dist/build-report/compose-healthz.json
+          curl -fsS http://127.0.0.1:21114/v1/grants/public-key | tee dist/build-report/compose-public-key.json
+          docker compose -f packaging/control/docker-compose.yml ps | tee dist/build-report/compose-ps.txt
+          docker compose -f packaging/control/docker-compose.yml logs --no-color control > dist/build-report/compose-control.log
+          docker compose -f packaging/control/docker-compose.yml down -v
+          rm -f packaging/control/.env
+
+      - name: Test arm64 packages under emulation
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        run: |
+          docker run --privileged --rm tonistiigi/binfmt --install arm64 > /dev/null
+          : > dist/build-report/distro-results.txt
+          mkdir -p dist/build-report/distro-logs
+          t() {
+            name=$1; img=$2; cmd=$3
+            if docker run --rm --platform linux/arm64 -v "$PWD/pkgs:/pkgs:ro" "$img" sh -c "$cmd" > "dist/build-report/distro-logs/arm64_$name.log" 2>&1; then
+              echo "PASS arm64 $name" >> dist/build-report/distro-results.txt
+            else echo "FAIL arm64 $name" >> dist/build-report/distro-results.txt; fi
+          }
+          t debian12 debian:12 'apt-get update -qq && apt-get install -y /pkgs/*.deb && id zherodizk-control && zherodizk-control generate-keys | grep -c ZHD_ | grep -qx 2 && echo OK'
+          t fedora41 fedora:41 'dnf install -y /pkgs/*.rpm && id zherodizk-control && zherodizk-control generate-keys | grep -c ZHD_ | grep -qx 2 && echo OK'
+          cat dist/build-report/distro-results.txt
+          if grep -q '^FAIL' dist/build-report/distro-results.txt; then exit 1; fi
+
+      - name: Upload build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: control-packages-evidence-${{ matrix.target }}
+          path: dist/build-report/
+          if-no-files-found: warn
+          retention-days: 14

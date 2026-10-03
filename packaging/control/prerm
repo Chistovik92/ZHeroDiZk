@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+if [ "$1" = remove ] && [ -d /run/systemd/system ]; then
+    systemctl stop zherodizk-control || true
+    systemctl disable zherodizk-control || true
+fi
+exit 0
