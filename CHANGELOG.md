@@ -3,6 +3,15 @@
 Автор: SecretHero. Формат версий — [docs/VERSIONING.md](docs/VERSIONING.md).
 Выпущены пре-релизы v0.1.1–v0.1.5 и v0.3.4 (только исходный код): https://github.com/Chistovik92/ZHeroDiZk/releases
 
+## 0.7.7
+
+- **Веб-панель** `panel/` (TypeScript, React): вход и MFA, организации, устройства и токены регистрации, группы, правила доступа, адресная книга, разрешения и их отзыв, журнал аудита с экспортом CSV/JSON, участники, смена пароля, MFA; светлая и тёмная темы, RU/EN, вид в духе клиента RustDesk. Архив, шаблон nginx, Caddyfile, Docker Compose: `packaging/panel/`. Проверено в CI: https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37157784725.
+- **Сервер управления:** `GET /v1/orgs/{org}/members`, `GET /v1/orgs/{org}/grants`, `POST /v1/auth/password` (смена пароля завершает остальные сеансы). Тесты на PostgreSQL и clippy: https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37157786594.
+- **Android:** `client/android-identity.json`, платформа `android` в `prepare_client`, workflow `client-android.yml` (три архитектуры, подпись ключом проекта из секретов или временным ключом, проверки `apksigner`/`aapt2`/сеть): https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37157784789. Запуск на устройстве не проверялся.
+- **Выпуск:** `release.yml` по тегу `vX.Y.Z` собирает установщики всех компонентов (серверы, сервер управления, клиенты Windows, Linux, Android, панель), считает `SHA256SUMS` и публикует GitHub Release.
+- **Документация:** [docs/MANUAL.md](docs/MANUAL.md) — руководство по установке и эксплуатации всех компонентов; обновлены дорожная карта (сводка пробелов до 1.0.0), статус, платформы, структура.
+- Номер 0.7.7 — выпуск сопровождения, не завершение этапа 0.7.0.
+
 ## 0.7.6
 
 - SBOM собирает тексты лицензий Dart из разрешённых корней пакетов и vcpkg из установленного дерева; недостающие лицензии остаются UNKNOWN.

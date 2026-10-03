@@ -12,9 +12,11 @@
 | `zherodizk-client_<версия>_amd64.deb`, `zherodizk-client-<версия>-1.x86_64.rpm`, `zherodizk-client-<версия>-linux-x86_64.tar.gz` | клиент Linux (X11) |
 | `zherodizk-server_…` (deb, rpm, tar.gz; x86_64 и aarch64) | сервер встреч и ретрансляции |
 | `zherodizk-control_…` (deb, rpm, tar.gz; x86_64 и aarch64) | сервер управления (нужен PostgreSQL и TLS-прокси) |
+| `zherodizk-client-<версия>-android-<arch>.apk` | клиент Android (`arm64-v8a`, `armeabi-v7a`, `x86_64`); `-citestkey` в имени — подписан временным ключом |
+| `zherodizk-panel-<версия>.tar.gz` | веб-панель (статические файлы, nginx/Caddy/Docker) |
 | `SHA256SUMS` | контрольные суммы всех файлов выпуска |
 
-Проверьте сумму: `sha256sum -c SHA256SUMS`. Установщика (MSI/EXE) для Windows нет: это следующий шаг.
+Проверьте сумму: `sha256sum -c SHA256SUMS`. Установщика (MSI/EXE) для Windows нет: это следующий шаг. Подробное руководство по установке и эксплуатации — [MANUAL.md](MANUAL.md).
 
 ## Чего ждать и чего бояться
 
