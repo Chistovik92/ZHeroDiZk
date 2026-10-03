@@ -82,7 +82,7 @@
   "files": [
     {
       "path": "flutter/assets/icon.svg",
-      "sha256_before": "4d6ecc2b45571382576049095435f41576c02e895b8766ef3f300623c35b348",
+      "sha256_before": "4d6ecc2b45571382576049095435f41576c02e895b8766ef3f300623c35b3488",
       "normalize_eol": true,
       "source": "client/branding/icon.svg"
     }

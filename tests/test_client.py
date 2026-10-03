@@ -318,3 +318,14 @@ class CachedSdkPatchTests(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             apply_once(self.sdk, self.patch)
         self.assertEqual(self.source.read_text(), "unrelated edit\n")
+
+
+class ManifestFileEntryTests(unittest.TestCase):
+    def test_file_entries_are_well_formed(self):
+        client = Path(__file__).resolve().parents[1] / "client"
+        for name in ("common", "linux", "windows"):
+            manifest = json.loads((client / f"{name}-identity.json").read_text(encoding="utf-8"))
+            for item in manifest.get("files", []):
+                self.assertRegex(item["sha256_before"], "^[0-9a-f]{64}$", item["path"])
+                self.assertTrue((client.parent / item["source"]).is_file(), item["source"])
+                self.assertNotIn("..", item["path"])
