@@ -2,7 +2,7 @@
 
 Автор: SecretHero.
 
-Версия проекта: 0.3.4 (пре-релиз, исходный код без бинарников; выпуски v0.1.1–v0.1.5, v0.3.4). Это начало разработки, не законченный продукт.
+Версия проекта: 0.4.0 (пре-релиз, исходный код без бинарников; выпуски v0.1.1–v0.1.5, v0.3.4, v0.4.0). Это начало разработки, не законченный продукт.
 Дорожная карта и версии: [ROADMAP.md](ROADMAP.md).
 PR: https://github.com/Chistovik92/ZHeroDiZk/pull/2.
 
@@ -54,11 +54,17 @@ libxdot.so.4 не принимается за libxdo. Launcher останавл�
 и недостаточная история Git для закреплённых портов vcpkg.
 Новый код сохраняет AGPL-3.0-only; вопрос лицензии hbb_common — в LICENSING.md.
 
+## Сервер управления и клиенты без чужих адресов (3 октября 2026)
+
+- `crates/control`: 30 модульных и 31 интеграционный тест на PostgreSQL 16, clippy без замечаний (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37084017476). Покрыто: аккаунты, блокировка, MFA (в т.ч. векторы RFC 4226/6238), организации, устройства, группы, ACL, адресная книга, аудит, соответствие OpenAPI маршрутам.
+- Linux-клиент (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37081370611) и Windows-клиент (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37081373712) собираются; в `zherodizk`, `librustdesk.so`, `libapp.so`, `zherodizk.exe`, `librustdesk.dll`, `app.so` нет адресов `api./admin./rs-ny.rustdesk.com` и встроенного ключа. Запуск клиентов не проверялся; соединение клиент-сервер не проверялось.
+- Не сделано: TLS и пакеты сервера управления, панель, управляемые сеансы, Android/macOS/iOS.
+
 ## Windows и сервер (3 октября 2026)
 
 - Windows-клиент: сборка прошла (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37076929471); `zherodizk.exe` с метаданными ZHeroDiZk/SecretHero проверен по собранному файлу. Запуск на Windows не проверялся. Пользовательский движок Flutter скачивается как в исходной сборке без закрепления версии; его SHA-256 записан в отчёте сборки.
 - Сервер: статические бинарники `zhd-rendezvous`, `zhd-relay`, `zhd-utils`; пакеты и установка проверены в CI на 8 дистрибутивах (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37079026760) и aarch64 под эмуляцией (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37080147593); Docker Compose запускается.
-- Известная проблема: клиент по умолчанию использует адрес и ключ публичного сервера исходного проекта (SECURITY.md, пункт 0.3.7).
+- Проблема со встроенными адресами исходного проекта исправлена в 0.4.0 (SECURITY.md, пункт 0.3.7).
 
 ## Сборка с собственной идентичностью
 

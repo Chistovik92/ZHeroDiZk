@@ -14,9 +14,15 @@
 ```bash
 python3 -m unittest discover -s tests -v   # 44 теста
 python3 tools/bootstrap.py --check-lock
-cargo test --workspace --offline           # 17 тестов access-policy
+cargo test --locked -p zherodizk-access-policy                 # 17 тестов политики
+ZHD_TEST_DATABASE_URL=postgres://user:pass@localhost/db \
+  cargo test --locked -p zherodizk-control                       # сервер управления, нужен PostgreSQL 16
+cargo clippy --locked -p zherodizk-control --all-targets -- -D warnings
 ```
 
+Без `ZHD_TEST_DATABASE_URL` интеграционные тесты сервера управления пропускаются (молча проходят) — для
+настоящей проверки нужна база; каждый тест работает в собственной схеме. `Cargo.lock` хранится в
+репозитории; при смене зависимостей его обновляют по артефакту CI (локально Rust не установлен).
 Rust-тесты в CI запускаются на каждый push и PR. Локально на машине автора Rust
 не установлен, поэтому локально проверены только Python-тесты.
 

@@ -3,6 +3,12 @@
 Автор: SecretHero. Формат версий — [docs/VERSIONING.md](docs/VERSIONING.md).
 Выпущены пре-релизы v0.1.1–v0.1.5 и v0.3.4 (только исходный код): https://github.com/Chistovik92/ZHeroDiZk/releases
 
+## 0.4.0 — выпущено (v0.4.0; включает 0.3.5 (Arch) и 0.3.7)
+
+- **0.3.7** Клиентские сборки больше не содержат встроенного сервера и ключа исходного проекта, его адреса API и проверки обновлений; проверка `check_client_network.py` в обеих сборках (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37081370611, https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37081373712).
+- **0.3.5 (часть)** PKGBUILD для Arch: сборка и установка проверены в контейнере; unit-файлы с `UMask=0077` (закрытый ключ сервера 0600).
+- **0.4.1–0.4.6** Сервер управления `crates/control`: аккаунты (Argon2id), сессии, MFA (TOTP), организации и роли, устройства с проверкой владения ключом Ed25519, группы, ACL, адресная книга, журнал аудита, OpenAPI. Проверено в CI на PostgreSQL (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37084017476).
+
 ## 0.3.4 — выпущено (v0.3.4; включает 0.2.1–0.2.2 и 0.3.1–0.3.3)
 
 - 0.3.1–0.3.2: закреплённые серверные исходники, `bootstrap.py --component server`,

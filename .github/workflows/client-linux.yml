@@ -158,6 +158,7 @@ jobs:
           timeout 30s "$bundle/zherodizk" --zherodizk-identity > dist/build-report/client-identity.json
           python3 tools/check_client_identity.py dist/build-report/client-identity.json
           sha256sum "$bundle/zherodizk" "$bundle/lib/librustdesk.so" > dist/build-report/binaries.sha256
+          python3 tools/check_client_network.py "$bundle/zherodizk" "$bundle/lib/librustdesk.so" $(find "$bundle" -name libapp.so) | tee dist/build-report/network-check.txt
           git -C vendor/client diff --stat > dist/build-report/upstream-changes.txt
           rustc --version > dist/build-report/rust-version.txt
           flutter --version > dist/build-report/flutter-version.txt

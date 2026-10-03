@@ -163,6 +163,24 @@ jobs:
           else echo "FAIL alpine:3.20 (tarball)" >> dist/build-report/distro-results.txt; fi
           cat dist/build-report/distro-results.txt
 
+      - name: Build and test the Arch package (x86_64)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          version=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          mkdir -p archbuild
+          cp pkgs/zherodizk-server-"$version"-linux-x86_64.tar.gz archbuild/
+          cp packaging/arch/PKGBUILD packaging/arch/zherodizk.sysusers packaging/arch/zherodizk.tmpfiles packaging/common/server.env packaging/systemd/*.service archbuild/
+          chmod -R a+rwX archbuild
+          docker run --rm -e ZHD_VERSION="$version" -v "$PWD/archbuild:/build" archlinux:latest sh -c '
+            pacman -Sy --noconfirm --needed base-devel >/dev/null &&
+            useradd -m builder && chown -R builder /build && cd /build &&
+            su builder -c "ZHD_VERSION=$ZHD_VERSION makepkg -f --nodeps --noconfirm" &&
+            pacman -U --noconfirm /build/*.pkg.tar.zst &&
+            systemd-sysusers && systemd-tmpfiles --create &&
+            id zherodizk && zhd-utils genkeypair >/dev/null && ls -ld /var/lib/zherodizk && echo OK' > dist/build-report/arch-test.log 2>&1             && echo "PASS archlinux (PKGBUILD)" >> dist/build-report/distro-results.txt             || { echo "FAIL archlinux (PKGBUILD)" >> dist/build-report/distro-results.txt; tail -30 dist/build-report/arch-test.log; }
+          cat dist/build-report/distro-results.txt
+          if grep -q '^FAIL' dist/build-report/distro-results.txt; then echo 'at least one distribution test failed'; exit 1; fi
+
       - name: Test arm64 packages under emulation
         if: matrix.target == 'aarch64-unknown-linux-musl'
         run: |

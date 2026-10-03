@@ -1,0 +1,354 @@
+openapi: 3.0.3
+info:
+  title: ZHeroDiZk control server API
+  version: 0.4.6
+  description: |
+    Control server API (stage 0.4.x): local accounts, sessions, multi-factor authentication,
+    organisations, device enrolment, groups, access rules, address books and an audit log.
+    **No endpoint grants remote access to a device yet**; session grants arrive in stage 0.5.
+
+    Authentication: `Authorization: Bearer <token>` with the token returned by login.
+    All errors are `{"error": "<message>"}`. Requests about an organisation the caller does
+    not belong to answer 404, never 403, so organisation ids cannot be probed.
+    Author: SecretHero.
+  license:
+    name: AGPL-3.0-only
+servers:
+  - url: http://127.0.0.1:21114
+    description: Default listen address (ZHD_LISTEN)
+security:
+  - bearer: []
+paths:
+  /healthz:
+    get:
+      summary: Liveness and database check
+      security: []
+      responses:
+        '200': { description: 'Healthy: {status: ok, database: ok}' }
+        '503': { description: 'Database unavailable' }
+  /v1/auth/register:
+    post:
+      summary: Create an account
+      description: The very first account may always be created (administrator). Later accounts only when ZHD_ALLOW_REGISTRATION is true. Password length 12-256 characters.
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/Credentials' }
+      responses:
+        '201': { description: 'Created: {id, email}' }
+        '400': { description: 'Invalid email or weak password' }
+        '403': { description: 'Registration is closed' }
+        '409': { description: 'Email already registered' }
+  /v1/auth/login:
+    post:
+      summary: Log in with email and password
+      description: Wrong password, unknown account, locked account and malformed email all answer the same 401. Five failures lock the account for 15 minutes. For accounts with MFA the answer is `{mfa_required: true, mfa_token, expires_at}`, and the second step is /v1/auth/login/mfa.
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/Credentials' }
+      responses:
+        '200': { description: '{token, expires_at} or {mfa_required, mfa_token, expires_at}' }
+        '401': { description: Invalid credentials }
+  /v1/auth/login/mfa:
+    post:
+      summary: Second login step with a TOTP code or a recovery code
+      description: Send exactly one of `code` and `recovery_code`. A TOTP step can be used once and never an older one; recovery codes are single use. Failures count towards the lockout.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mfa_token]
+              properties:
+                mfa_token: { type: string }
+                code: { type: string }
+                recovery_code: { type: string }
+      responses:
+        '200': { description: '{token, expires_at}' }
+        '400': { description: Neither or both factors sent }
+        '401': { description: Invalid or expired mfa_token, or wrong code }
+        '503': { description: MFA is not configured on the server (ZHD_MFA_KEY) }
+  /v1/auth/logout:
+    post:
+      summary: Revoke the current session
+      responses:
+        '204': { description: Revoked }
+        '401': { description: Not authenticated }
+  /v1/auth/me:
+    get:
+      summary: The authenticated account
+      responses:
+        '200': { description: '{id, email}' }
+        '401': { description: Not authenticated }
+  /v1/auth/mfa/enroll:
+    post:
+      summary: Start TOTP enrolment
+      description: Returns a new secret (base32) and an otpauth URI. The secret is stored encrypted and is not active until confirmed.
+      responses:
+        '200': { description: '{secret, otpauth_uri}' }
+        '409': { description: MFA already enabled }
+        '503': { description: MFA is not configured on the server }
+  /v1/auth/mfa/confirm:
+    post:
+      summary: Activate MFA with a valid code
+      description: Returns ten single-use recovery codes, shown only once.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+      responses:
+        '200': { description: '{recovery_codes: [..]}' }
+        '400': { description: Invalid code or enrolment not started }
+        '409': { description: MFA already enabled }
+  /v1/auth/mfa/disable:
+    post:
+      summary: Turn MFA off
+      description: Needs the password and a fresh TOTP code, not only a session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password, code]
+              properties:
+                password: { type: string }
+                code: { type: string }
+      responses:
+        '204': { description: Disabled }
+        '401': { description: Wrong password or code }
+        '409': { description: MFA not enabled }
+  /v1/orgs:
+    post:
+      summary: Create an organisation (the caller becomes its owner)
+      requestBody: { $ref: '#/components/requestBodies/Name' }
+      responses:
+        '201': { description: '{id, name, role}' }
+        '400': { description: Invalid name }
+    get:
+      summary: Organisations the caller belongs to
+      responses:
+        '200': { description: '[{id, name, role}]' }
+  /v1/orgs/{org}/members:
+    post:
+      summary: Add an existing user to the organisation
+      description: Admins can add members; only owners can add admins. Owners cannot be added.
+      parameters: [ { $ref: '#/components/parameters/Org' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string }
+                role: { type: string, enum: [member, admin] }
+      responses:
+        '204': { description: Added }
+        '403': { description: Role too low }
+        '404': { description: Organisation or user not found }
+        '409': { description: Already a member }
+  /v1/orgs/{org}/enrollment-tokens:
+    post:
+      summary: Create a one-time device enrolment token (admin)
+      description: The token is returned once, valid for 24 hours, single use.
+      parameters: [ { $ref: '#/components/parameters/Org' } ]
+      responses:
+        '201': { description: '{token, expires_at}' }
+        '403': { description: Role too low }
+        '404': { description: Organisation not found }
+  /v1/orgs/{org}/audit:
+    get:
+      summary: Audit log of the organisation (admin)
+      description: Newest first. `limit` 1-200 (default 50); pass `before` with the last id for the next page. Entries are append-only.
+      parameters:
+        - { $ref: '#/components/parameters/Org' }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: before, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: '{events: [{id, actor_user_id, action, target, detail, created_at}], next_before}' }
+        '403': { description: Role too low }
+        '404': { description: Organisation not found }
+  /v1/devices/enroll:
+    post:
+      summary: Enrol a device with proof of key ownership
+      description: |
+        No user session is needed. The device signs `zherodizk-enroll-v1\n<token>\n<name>\n<public_key base64>`
+        with its Ed25519 key. The signature is checked before the token is spent. A key can be
+        registered once in the whole installation.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, name, platform, public_key, signature]
+              properties:
+                token: { type: string }
+                name: { type: string }
+                platform: { type: string, enum: [windows, linux, android, macos, ios] }
+                public_key: { type: string, description: 32 bytes, standard base64 }
+                signature: { type: string, description: 64 bytes, standard base64 }
+      responses:
+        '201': { description: '{device_id, org_id}' }
+        '400': { description: Malformed input }
+        '401': { description: Bad signature, unknown, used or expired token }
+        '409': { description: Key already registered }
+  /v1/orgs/{org}/devices:
+    get:
+      summary: Devices of the organisation (any member)
+      parameters: [ { $ref: '#/components/parameters/Org' } ]
+      responses:
+        '200': { description: '[{id, name, platform, status, created_at}]' }
+        '404': { description: Organisation not found }
+  /v1/orgs/{org}/devices/{device}/revoke:
+    post:
+      summary: Revoke a device (admin)
+      parameters: [ { $ref: '#/components/parameters/Org' }, { $ref: '#/components/parameters/Device' } ]
+      responses:
+        '204': { description: Revoked }
+        '403': { description: Role too low }
+        '404': { description: Not found or already revoked }
+  /v1/orgs/{org}/devices/{device}/access:
+    get:
+      summary: The caller's effective capabilities on a device
+      description: Union of the rules of every group containing the device; empty means no access. Owners and admins get nothing without a rule.
+      parameters: [ { $ref: '#/components/parameters/Org' }, { $ref: '#/components/parameters/Device' } ]
+      responses:
+        '200': { description: '{device_id, capabilities: [view|input|file_transfer|clipboard]}' }
+        '404': { description: Not found }
+  /v1/orgs/{org}/groups:
+    post:
+      summary: Create a device group (admin)
+      parameters: [ { $ref: '#/components/parameters/Org' } ]
+      requestBody: { $ref: '#/components/requestBodies/Name' }
+      responses:
+        '201': { description: '{id, name, created_at}' }
+        '409': { description: Name already used }
+    get:
+      summary: Groups of the organisation (any member)
+      parameters: [ { $ref: '#/components/parameters/Org' } ]
+      responses:
+        '200': { description: '[{id, name, created_at}]' }
+  /v1/orgs/{org}/groups/{group}/devices:
+    post:
+      summary: Put a device into a group (admin)
+      parameters: [ { $ref: '#/components/parameters/Org' }, { $ref: '#/components/parameters/Group' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_id]
+              properties:
+                device_id: { type: string, format: uuid }
+      responses:
+        '204': { description: Added (idempotent) }
+        '404': { description: Group or device not found in this organisation }
+  /v1/orgs/{org}/groups/{group}/devices/{device}:
+    delete:
+      summary: Remove a device from a group (admin)
+      parameters: [ { $ref: '#/components/parameters/Org' }, { $ref: '#/components/parameters/Group' }, { $ref: '#/components/parameters/Device' } ]
+      responses:
+        '204': { description: Removed }
+        '404': { description: Not found }
+  /v1/orgs/{org}/acl:
+    get:
+      summary: All access rules (admin)
+      parameters: [ { $ref: '#/components/parameters/Org' } ]
+      responses:
+        '200': { description: '[{user_id, group_id, capabilities}]' }
+    put:
+      summary: Create or replace the rule of a user for a group (admin)
+      parameters: [ { $ref: '#/components/parameters/Org' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, group_id, capabilities]
+              properties:
+                user_id: { type: string, format: uuid }
+                group_id: { type: string, format: uuid }
+                capabilities:
+                  type: array
+                  items: { type: string, enum: [view, input, file_transfer, clipboard] }
+      responses:
+        '200': { description: The stored rule }
+        '400': { description: Unknown or empty capabilities }
+        '404': { description: Group not found or user not a member }
+  /v1/orgs/{org}/acl/{user}/{group}:
+    delete:
+      summary: Delete a rule (admin)
+      parameters:
+        - { $ref: '#/components/parameters/Org' }
+        - { name: user, in: path, required: true, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/Group' }
+      responses:
+        '204': { description: Deleted }
+        '404': { description: Not found }
+  /v1/orgs/{org}/address-book:
+    get:
+      summary: The caller's own address book in this organisation
+      parameters: [ { $ref: '#/components/parameters/Org' } ]
+      responses:
+        '200': { description: '[{device_id, alias, device_name, device_status}]' }
+  /v1/orgs/{org}/address-book/{device}:
+    put:
+      summary: Save or rename a device in the caller's address book
+      parameters: [ { $ref: '#/components/parameters/Org' }, { $ref: '#/components/parameters/Device' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [alias]
+              properties:
+                alias: { type: string }
+      responses:
+        '204': { description: Saved }
+        '404': { description: Device not found }
+    delete:
+      summary: Remove an entry
+      parameters: [ { $ref: '#/components/parameters/Org' }, { $ref: '#/components/parameters/Device' } ]
+      responses:
+        '204': { description: Removed }
+        '404': { description: Not found }
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+  parameters:
+    Org: { name: org, in: path, required: true, schema: { type: string, format: uuid } }
+    Group: { name: group, in: path, required: true, schema: { type: string, format: uuid } }
+    Device: { name: device, in: path, required: true, schema: { type: string, format: uuid } }
+  requestBodies:
+    Credentials:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email, password]
+            properties:
+              email: { type: string }
+              password: { type: string }
+    Name:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name]
+            properties:
+              name: { type: string, maxLength: 100 }

@@ -155,13 +155,16 @@ class PreparationTests(unittest.TestCase):
             prepare_client.prepare(self.source)
 
     def identity_fixture(self, platform="linux"):
-        manifest_path = Path(__file__).resolve().parents[1] / "client" / f"{platform}-identity.json"
-        manifest = json.loads(manifest_path.read_text())
+        client_dir = Path(__file__).resolve().parents[1] / "client"
         (self.root / "client").mkdir(exist_ok=True)
-        (self.root / "client" / f"{platform}-identity.json").write_text(json.dumps(manifest), encoding="utf-8")
         contents = {}
-        for change in manifest["changes"]:
-            contents.setdefault(change["path"], []).append(change["before"])
+        for name in ("common", platform):
+            data = json.loads((client_dir / f"{name}-identity.json").read_text(encoding="utf-8"))
+            (self.root / "client" / f"{name}-identity.json").write_text(json.dumps(data), encoding="utf-8")
+            for change in data["changes"]:
+                contents.setdefault(change["path"], []).append(change["before"])
+            if name == platform:
+                manifest = data
         for name, fragments in contents.items():
             target = self.source / name
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -184,6 +187,24 @@ class PreparationTests(unittest.TestCase):
         self.assertIn('set(BINARY_NAME "zherodizk")', cmake)
         self.assertIn('"io.github.chistovik92.zherodizk"', cmake)
         self.assertEqual((self.source / "LICENCE").read_text(), "test fixture")
+
+    def test_common_manifest_removes_third_party_defaults(self):
+        self.identity_fixture()
+        prepare_client.prepare(self.source, "zherodizk")
+        config = (self.source / "libs/hbb_common/src/config.rs").read_text(encoding="utf-8")
+        self.assertIn('RS_PUB_KEY: &str = ""', config)
+        self.assertIn("unconfigured.zherodizk.invalid", config)
+        self.assertNotIn("rustdesk.com", config)
+        common = (self.source / "src/common.rs").read_text(encoding="utf-8")
+        self.assertIn("if true {", common)
+        self.assertNotIn("admin.rustdesk.com", common)
+
+    def test_common_manifest_shape(self):
+        data = json.loads((Path(__file__).resolve().parents[1] / "client/common-identity.json").read_text(encoding="utf-8"))
+        self.assertEqual(data["platform"], "common")
+        for change in data["changes"]:
+            self.assertNotIn(chr(10), change["before"], "anchors must be single-line (CRLF checkouts)")
+            self.assertNotIn("rustdesk.com", change["after"])
 
     def test_windows_identity_leaves_cargo_untouched(self):
         self.identity_fixture("windows")

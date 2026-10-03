@@ -172,6 +172,7 @@ jobs:
           cat dist/build-report/version-info.json
           python tools/check_windows_identity.py dist/build-report/version-info.json "$out"
           sha256sum "$out/zherodizk.exe" "$out/librustdesk.dll" > dist/build-report/binaries.sha256
+          python tools/check_client_network.py "$out/zherodizk.exe" "$out/librustdesk.dll" $(find "$out" -name app.so) | tee dist/build-report/network-check.txt
           git -C vendor/client diff --stat > dist/build-report/upstream-changes.txt
           rustc --version > dist/build-report/rust-version.txt
           flutter --version > dist/build-report/flutter-version.txt
