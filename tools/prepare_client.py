@@ -78,10 +78,14 @@ def prepare(source, profile="baseline", platform="linux"):
         adjustments.append("Build cdylib only, matching upstream Linux CI")
     identity = None
     if profile == "zherodizk":
-        identity = json.loads((ROOT / "client" / f"{platform}-identity.json").read_text(encoding="utf-8"))
-        if identity.get("schema_version") != 1 or identity.get("profile") != profile:
-            raise ValueError("Unsupported identity manifest")
-        collect_changes(source, identity, pending)
+        # The common manifest removes built-in third-party servers, keys and update checks.
+        for name in ("common", platform):
+            manifest = json.loads((ROOT / "client" / f"{name}-identity.json").read_text(encoding="utf-8"))
+            if manifest.get("schema_version") != 1 or manifest.get("profile") != profile:
+                raise ValueError("Unsupported identity manifest")
+            collect_changes(source, manifest, pending)
+            if name == platform:
+                identity = manifest
     write_pending(pending)
     return {"upstream": client, "submodules": submodules,
             "adjustments": adjustments, "platform": platform,

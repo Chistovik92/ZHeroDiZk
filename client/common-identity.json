@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "profile": "zherodizk",
+  "platform": "common",
+  "changes": [
+    {
+      "path": "libs/hbb_common/src/config.rs",
+      "before": "pub const RENDEZVOUS_SERVERS: &[&str] = &[\"rs-ny.rustdesk.com\"];",
+      "after": "pub const RENDEZVOUS_SERVERS: &[&str] = &[\"unconfigured.zherodizk.invalid\"];"
+    },
+    {
+      "path": "libs/hbb_common/src/config.rs",
+      "before": "pub const RS_PUB_KEY: &str = \"OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=\";",
+      "after": "pub const RS_PUB_KEY: &str = \"\";"
+    },
+    {
+      "path": "libs/hbb_common/src/lib.rs",
+      "before": "const URL: &str = \"https://api.rustdesk.com/version/latest\";",
+      "after": "const URL: &str = \"https://updates.zherodizk.invalid/version/latest\";"
+    },
+    {
+      "path": "src/common.rs",
+      "before": "pub fn check_software_update() {",
+      "after": "pub fn check_software_update() {\n    // Update checks are disabled until ZHeroDiZk runs its own update service.\n    if true {\n        return;\n    }"
+    },
+    {
+      "path": "src/common.rs",
+      "before": "pub async fn do_check_software_update() -> hbb_common::ResultType<()> {",
+      "after": "pub async fn do_check_software_update() -> hbb_common::ResultType<()> {\n    // Update checks are disabled until ZHeroDiZk runs its own update service.\n    if true {\n        return Ok(());\n    }"
+    },
+    {
+      "path": "src/common.rs",
+      "before": "    \"https://admin.rustdesk.com\".to_owned()",
+      "after": "    \"\".to_owned()"
+    },
+    {
+      "path": "src/main.rs",
+      "before": ".author(\"Purslane Ltd<info@rustdesk.com>\")",
+      "after": ".author(\"SecretHero\")"
+    }
+  ]
+}
