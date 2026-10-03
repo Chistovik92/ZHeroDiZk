@@ -7,6 +7,11 @@ on:
         description: 'Also build installable packages and keep them as a build artifact (test releases)'
         type: boolean
         default: false
+  workflow_call:
+    inputs:
+      package:
+        type: boolean
+        default: true
   push:
     branches: ['claude/server-linux']
     paths:

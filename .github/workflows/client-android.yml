@@ -1,0 +1,271 @@
+name: Android client
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Keep the signed APKs as a build artifact (test releases)'
+        type: boolean
+        default: true
+  workflow_call:
+    inputs:
+      package:
+        type: boolean
+        default: true
+    secrets:
+      ANDROID_KEYSTORE_BASE64:
+        required: false
+      ANDROID_KEYSTORE_PASSWORD:
+        required: false
+      ANDROID_KEY_ALIAS:
+        required: false
+      ANDROID_KEY_PASSWORD:
+        required: false
+  push:
+    branches: ['claude/**']
+    paths:
+      - '.github/workflows/client-android.yml'
+      - 'client/android-identity.json'
+      - 'client/common-identity.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-client-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_INCREMENTAL: '0'
+  RUST_VERSION: '1.75.0'
+  FLUTTER_VERSION: '3.24.5'
+  BRIDGE_FLUTTER_VERSION: '3.22.3'
+  CARGO_NDK_VERSION: '3.1.2'
+  NDK_VERSION: 'r28c'
+  VCPKG_COMMIT_ID: '120deac3062162151622ca4860575a33844ba10b'
+
+# Versions follow the pinned upstream CI (flutter-build.yml, tag 1.4.8). The release key comes from the
+# repository secrets ANDROID_KEYSTORE_*; without them a throw-away test key is generated and the APK is
+# named "-citestkey" so it cannot be mistaken for a release build.
+jobs:
+  bridge:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+
+      - name: Fetch and prepare pinned client
+        run: |
+          python3 tools/bootstrap.py --submodules
+          python3 tools/prepare_client.py vendor/client --profile zherodizk --platform android --report dist/source.json
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt
+          rustup default "$RUST_VERSION"
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.22.3'
+          channel: stable
+          cache: true
+
+      - name: Generate Rust Dart bridge
+        working-directory: vendor/client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y llvm-dev libclang-dev clang
+          cargo install cargo-expand --version 1.0.95 --locked
+          cargo install flutter_rust_bridge_codegen --version 1.80.1 --features uuid --locked
+          sed -i 's/extended_text: 14.0.0/extended_text: 13.0.0/' flutter/pubspec.yaml
+          (cd flutter && flutter pub get)
+          flutter_rust_bridge_codegen --rust-input ./src/flutter_ffi.rs \
+            --dart-output ./flutter/lib/generated_bridge.dart \
+            --c-output ./flutter/macos/Runner/bridge_generated.h
+          cp flutter/macos/Runner/bridge_generated.h flutter/ios/Runner/bridge_generated.h
+          git restore flutter/pubspec.yaml
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-bridge-files
+          retention-days: 3
+          path: |
+            vendor/client/src/bridge_generated.rs
+            vendor/client/src/bridge_generated.io.rs
+            vendor/client/flutter/lib/generated_bridge.dart
+            vendor/client/flutter/lib/generated_bridge.freezed.dart
+            vendor/client/flutter/macos/Runner/bridge_generated.h
+            vendor/client/flutter/ios/Runner/bridge_generated.h
+
+  build:
+    needs: bridge
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { abi: arm64-v8a, target: aarch64-linux-android, script: ndk_arm64.sh, flutter-platform: android-arm64, ndk-lib: aarch64-linux-android, apk: app-arm64-v8a-release.apk }
+          - { abi: armeabi-v7a, target: armv7-linux-androideabi, script: ndk_arm.sh, flutter-platform: android-arm, ndk-lib: arm-linux-androideabi, apk: app-armeabi-v7a-release.apk }
+          - { abi: x86_64, target: x86_64-linux-android, script: ndk_x64.sh, flutter-platform: android-x64, ndk-lib: x86_64-linux-android, apk: app-x86_64-release.apk }
+    env:
+      VCPKG_ROOT: /home/runner/vcpkg-zhd
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/node_modules
+          df -h /
+
+      - name: Fetch and prepare pinned client
+        run: |
+          python3 tools/bootstrap.py --submodules
+          mkdir -p dist/build-report
+          python3 tools/prepare_client.py vendor/client --profile zherodizk --platform android --report dist/build-report/source.json
+
+      - name: Restore generated bridge
+        uses: actions/download-artifact@v4
+        with:
+          name: android-bridge-files
+          path: vendor/client
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake curl gcc-multilib git g++ g++-multilib libclang-dev \
+            libunwind-dev llvm-dev nasm ninja-build openjdk-17-jdk-headless pkg-config tree wget unzip zip
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+
+      - name: Patch Flutter SDK
+        run: python3 tools/apply_patch_once.py "$(dirname "$(dirname "$(which flutter)")")" vendor/client/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
+
+      - uses: nttld/setup-ndk@ed92fe6cadad69be94a966a7ee3271275e62f779
+        id: setup-ndk
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          add-to-path: true
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt --target ${{ matrix.job.target }}
+          rustup default "$RUST_VERSION"
+          cargo install cargo-ndk --version "$CARGO_NDK_VERSION" --locked
+
+      - name: Cache vcpkg binary packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/vcpkg
+          key: vcpkg-android-${{ matrix.job.abi }}-v1-${{ hashFiles('upstream.lock.json') }}
+
+      - name: Install pinned vcpkg and codecs
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
+          VCPKG_DEFAULT_BINARY_CACHE: /home/runner/.cache/vcpkg
+        run: |
+          mkdir -p "$VCPKG_DEFAULT_BINARY_CACHE"
+          git init "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" remote add origin https://github.com/microsoft/vcpkg.git
+          git -C "$VCPKG_ROOT" fetch origin "$VCPKG_COMMIT_ID"
+          git -C "$VCPKG_ROOT" checkout --detach FETCH_HEAD
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+          if ! (cd vendor/client && ./flutter/build_android_deps.sh "${{ matrix.job.abi }}"); then
+            find "$VCPKG_ROOT" -name '*.log' | while read -r f; do echo "== $f"; cat "$f"; done
+            exit 1
+          fi
+
+      - name: Build the Rust library
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
+        working-directory: vendor/client
+        run: |
+          ./flutter/${{ matrix.job.script }}
+          jni=flutter/android/app/src/main/jniLibs/${{ matrix.job.abi }}
+          mkdir -p "$jni"
+          cp target/${{ matrix.job.target }}/release/liblibrustdesk.so "$jni/librustdesk.so"
+          cp "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/${{ matrix.job.ndk-lib }}/libc++_shared.so" "$jni/"
+
+      - name: Signing key
+        id: key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          store="$RUNNER_TEMP/zherodizk.jks"
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$store"
+            alias="$KEY_ALIAS"; storepass="$KEYSTORE_PASSWORD"; keypass="$KEY_PASSWORD"
+            echo "suffix=" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No release key in secrets; signing with a throw-away CI test key"
+            alias=citest; storepass="$(openssl rand -hex 16)"; keypass="$storepass"
+            keytool -genkeypair -keystore "$store" -storetype PKCS12 -alias "$alias" -keyalg RSA -keysize 2048 \
+              -validity 30 -storepass "$storepass" -keypass "$keypass" -dname "CN=ZHeroDiZk CI test key"
+            echo "suffix=-citestkey" >> "$GITHUB_OUTPUT"
+          fi
+          {
+            echo "storeFile=$store"
+            echo "storePassword=$storepass"
+            echo "keyAlias=$alias"
+            echo "keyPassword=$keypass"
+          } > vendor/client/flutter/android/key.properties
+
+      - name: Build the APK
+        working-directory: vendor/client/flutter
+        env:
+          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+        run: |
+          export PATH="$JAVA_HOME/bin:$PATH"
+          sed -i "s/org.gradle.jvmargs=-Xmx1024M/org.gradle.jvmargs=-Xmx2g/g" android/gradle.properties
+          version=$(grep -m1 '^version = ' "$GITHUB_WORKSPACE/Cargo.toml" | cut -d'"' -f2)
+          IFS=. read -r major minor patch <<< "$version"
+          code=$((major * 1000000 + minor * 10000 + patch * 100))
+          flutter build apk --release --split-per-abi --target-platform ${{ matrix.job.flutter-platform }} \
+            --build-name "$version" --build-number "$code"
+          mkdir -p "$GITHUB_WORKSPACE/dist/packages"
+          cp build/app/outputs/flutter-apk/${{ matrix.job.apk }} \
+            "$GITHUB_WORKSPACE/dist/packages/zherodizk-client-$version-android-${{ matrix.job.abi }}${{ steps.key.outputs.suffix }}.apk"
+
+      - name: Check the APK
+        run: |
+          apk=$(ls dist/packages/*.apk)
+          ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}
+          tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          "$tools/apksigner" verify --print-certs "$apk" | tee dist/build-report/apk-signature.txt
+          "$tools/aapt2" dump badging "$apk" | grep -E "^package:|application-label:" | tee dist/build-report/apk-badging.txt
+          grep -q "name='io.github.chistovik92.zherodizk'" dist/build-report/apk-badging.txt
+          grep -q "application-label:'ZHeroDiZk'" dist/build-report/apk-badging.txt
+          mkdir -p dist/apk-libs && unzip -q -o "$apk" 'lib/*' -d dist/apk-libs
+          test -s dist/apk-libs/lib/${{ matrix.job.abi }}/librustdesk.so
+          python3 tools/check_client_network.py $(find dist/apk-libs -name '*.so') | tee dist/build-report/network-check.txt
+          (cd dist/packages && sha256sum -- *.apk > SHA256SUMS-${{ matrix.job.abi }} && cat SHA256SUMS-${{ matrix.job.abi }})
+
+      - name: Keep the APK for the release
+        if: inputs.package || github.event_name == 'workflow_call'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-client-dist-${{ matrix.job.abi }}
+          path: dist/packages/
+          retention-days: 7
+
+      - name: Upload build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-client-evidence-${{ matrix.job.abi }}
+          path: dist/build-report/
+          if-no-files-found: warn
+          retention-days: 14

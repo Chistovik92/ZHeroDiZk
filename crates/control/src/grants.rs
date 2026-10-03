@@ -4,12 +4,13 @@
 //! A grant is only a statement of permission; nothing here connects anyone to a device.
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
     routing::{get, post},
     Json, Router,
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
+use chrono::{DateTime, Utc};
 use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -30,6 +31,7 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/v1/grants/public-key", get(public_key))
         .route("/v1/orgs/:org/devices/:device/grants", post(issue_grant))
+        .route("/v1/orgs/:org/grants", get(list_grants))
         .route("/v1/orgs/:org/grants/:grant/revoke", post(revoke_grant))
 }
 
@@ -146,6 +148,70 @@ async fn issue_grant(
     .await?;
     tx.commit().await?;
     Ok((StatusCode::CREATED, Json(GrantOut { grant_id, token, capabilities, mode, not_before, expires_at })))
+}
+
+#[derive(Deserialize)]
+struct ListQuery {
+    limit: Option<i64>,
+}
+
+#[derive(Serialize)]
+struct GrantListItem {
+    grant_id: Uuid,
+    operator_id: Uuid,
+    operator_email: String,
+    device_id: Uuid,
+    device_name: String,
+    capabilities: Vec<String>,
+    mode: String,
+    issued_at: DateTime<Utc>,
+    expires_at: DateTime<Utc>,
+    revoked_at: Option<DateTime<Utc>>,
+    /// `active` (not expired, not revoked), `expired` or `revoked`.
+    status: &'static str,
+}
+
+type GrantRow = (Uuid, Uuid, String, Uuid, String, Vec<String>, String, DateTime<Utc>, DateTime<Utc>, Option<DateTime<Utc>>);
+
+/// Grants issued in the organisation, newest first. Admins see everyone's; a member sees only
+/// their own. The signed token is never stored, so it cannot be listed.
+async fn list_grants(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(org): Path<Uuid>,
+    Query(query): Query<ListQuery>,
+) -> Result<Json<Vec<GrantListItem>>, ApiError> {
+    let who = authenticate(&state, &headers).await?;
+    let role = require_role(&state, who.user_id, org, Role::Member).await?;
+    let only_operator: Option<Uuid> = (role < Role::Admin).then_some(who.user_id);
+    let limit = query.limit.unwrap_or(100).clamp(1, 200);
+    let rows: Vec<GrantRow> = sqlx::query_as(
+        "SELECT g.id, g.operator_id, u.email, g.device_id, d.name, g.capabilities, g.mode, \
+                g.issued_at, g.expires_at, g.revoked_at \
+         FROM grants g JOIN users u ON u.id = g.operator_id JOIN devices d ON d.id = g.device_id \
+         WHERE g.org_id = $1 AND ($2::uuid IS NULL OR g.operator_id = $2) \
+         ORDER BY g.issued_at DESC, g.id LIMIT $3",
+    )
+    .bind(org)
+    .bind(only_operator)
+    .bind(limit)
+    .fetch_all(&state.pool)
+    .await?;
+    let now = Utc::now();
+    Ok(Json(
+        rows.into_iter()
+            .map(|(grant_id, operator_id, operator_email, device_id, device_name, capabilities, mode, issued_at, expires_at, revoked_at)| {
+                let status = if revoked_at.is_some() {
+                    "revoked"
+                } else if expires_at <= now {
+                    "expired"
+                } else {
+                    "active"
+                };
+                GrantListItem { grant_id, operator_id, operator_email, device_id, device_name, capabilities, mode, issued_at, expires_at, revoked_at, status }
+            })
+            .collect(),
+    ))
 }
 
 /// The operator who received a grant, or an admin, can revoke it. Anyone else is told 404.

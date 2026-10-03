@@ -69,7 +69,7 @@ pub async fn require_role(state: &AppState, user_id: Uuid, org_id: Uuid, minimum
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/v1/orgs", post(create_org).get(list_orgs))
-        .route("/v1/orgs/:org/members", post(add_member))
+        .route("/v1/orgs/:org/members", post(add_member).get(list_members))
         .route("/v1/orgs/:org/enrollment-tokens", post(create_enrollment_token))
 }
 
@@ -174,6 +174,32 @@ async fn add_member(
         }
         Err(other) => Err(other.into()),
     }
+}
+
+#[derive(Serialize)]
+struct MemberOut {
+    user_id: Uuid,
+    email: String,
+    role: String,
+}
+
+/// Members of the organisation with their roles (admins only); the web panel uses it to show
+/// people instead of identifiers.
+async fn list_members(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(org): Path<Uuid>,
+) -> Result<Json<Vec<MemberOut>>, ApiError> {
+    let who = authenticate(&state, &headers).await?;
+    require_role(&state, who.user_id, org, Role::Admin).await?;
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT u.id, u.email, m.role FROM memberships m JOIN users u ON u.id = m.user_id \
+         WHERE m.org_id = $1 ORDER BY u.email, u.id",
+    )
+    .bind(org)
+    .fetch_all(&state.pool)
+    .await?;
+    Ok(Json(rows.into_iter().map(|(user_id, email, role)| MemberOut { user_id, email, role }).collect()))
 }
 
 #[derive(Serialize)]

@@ -263,6 +263,19 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(bootstrap.git(self.source, "status", "--porcelain"), "")
         self.assertEqual(icon.read_bytes(), before)
 
+    def test_android_identity_changes_application_id_and_labels(self):
+        self.identity_fixture("android")
+        report = prepare_client.prepare(self.source, "zherodizk", "android")
+        self.assertEqual(report["platform"], "android")
+        gradle = (self.source / "flutter/android/app/build.gradle").read_text(encoding="utf-8")
+        self.assertIn("io.github.chistovik92.zherodizk", gradle)
+        self.assertNotIn("com.carriez.flutter_hbb", gradle)
+        manifest = (self.source / "flutter/android/app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+        self.assertIn('android:label="ZHeroDiZk"', manifest)
+        self.assertIn('android:label="ZHeroDiZk Input"', manifest)
+        self.assertEqual(report["adjustments"], [])
+        self.assertNotIn("Cargo.toml", report["changed_files"])
+
     def test_windows_identity_leaves_cargo_untouched(self):
         self.identity_fixture("windows")
         report = prepare_client.prepare(self.source, "zherodizk", "windows")
@@ -331,7 +344,7 @@ class CachedSdkPatchTests(unittest.TestCase):
 class ManifestFileEntryTests(unittest.TestCase):
     def test_file_entries_are_well_formed(self):
         client = Path(__file__).resolve().parents[1] / "client"
-        for name in ("common", "linux", "windows"):
+        for name in ("common", "linux", "windows", "android"):
             manifest = json.loads((client / f"{name}-identity.json").read_text(encoding="utf-8"))
             for item in manifest.get("files", []):
                 self.assertRegex(item["sha256_before"], "^[0-9a-f]{64}$", item["path"])

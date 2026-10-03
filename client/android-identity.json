@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "profile": "zherodizk",
+  "platform": "android",
+  "display_name": "ZHeroDiZk",
+  "application_id": "io.github.chistovik92.zherodizk",
+  "changes": [
+    {
+      "path": "libs/hbb_common/src/config.rs",
+      "before": "pub static ref APP_NAME: RwLock<String> = RwLock::new(\"RustDesk\".to_owned());",
+      "after": "pub static ref APP_NAME: RwLock<String> = RwLock::new(\"ZHeroDiZk\".to_owned());"
+    },
+    {
+      "path": "flutter/android/app/build.gradle",
+      "before": "applicationId \"com.carriez.flutter_hbb\"",
+      "after": "applicationId \"io.github.chistovik92.zherodizk\""
+    },
+    {
+      "path": "flutter/android/app/src/main/AndroidManifest.xml",
+      "before": "android:label=\"RustDesk\"",
+      "after": "android:label=\"ZHeroDiZk\""
+    },
+    {
+      "path": "flutter/android/app/src/main/AndroidManifest.xml",
+      "before": "android:label=\"RustDesk Input\"",
+      "after": "android:label=\"ZHeroDiZk Input\""
+    },
+    {
+      "path": "flutter/android/app/src/main/res/values/strings.xml",
+      "before": "<string name=\"app_name\">RustDesk</string>",
+      "after": "<string name=\"app_name\">ZHeroDiZk</string>"
+    },
+    {
+      "path": "flutter/android/app/src/main/res/values/strings.xml",
+      "before": "when RustDesk screen sharing is established",
+      "after": "when ZHeroDiZk screen sharing is established"
+    }
+  ]
+}

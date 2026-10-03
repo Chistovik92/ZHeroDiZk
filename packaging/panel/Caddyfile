@@ -1,0 +1,16 @@
+# Panel and API on one host name with automatic TLS. Unpack the panel archive to /srv/zherodizk-panel.
+panel.example.org {
+    root * /srv/zherodizk-panel
+    encode gzip
+    header {
+        Content-Security-Policy "default-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'"
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+    }
+    @api path /v1/* /healthz
+    reverse_proxy @api 127.0.0.1:21114
+    try_files {path} /index.html
+    file_server
+}
+# Then set ZHD_TRUST_FORWARDED_FOR=true in /etc/zherodizk/control.env
+# (Caddy sets X-Forwarded-For itself).

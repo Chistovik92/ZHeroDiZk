@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: ZHeroDiZk control server API
-  version: 0.5.2
+  version: 0.7.7
   description: |
     Control server API (stage 0.4.x): local accounts, sessions, multi-factor authentication,
     organisations, device enrolment, groups, access rules, address books and an audit log.
@@ -81,6 +81,27 @@ paths:
       responses:
         '200': { description: '{id, email}' }
         '401': { description: Not authenticated }
+  /v1/auth/password:
+    post:
+      summary: Change the caller's password
+      description: |
+        Needs the current password; a wrong one counts towards the lockout. On success every other session
+        of the account is ended. The new password must be 12-256 characters.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password: { type: string }
+                new_password: { type: string }
+      responses:
+        '204': { description: Changed }
+        '400': { description: New password too short or too long }
+        '401': { description: Not authenticated }
+        '403': { description: Current password is wrong }
   /v1/auth/mfa/enroll:
     post:
       summary: Start TOTP enrolment
@@ -136,6 +157,13 @@ paths:
       responses:
         '200': { description: '[{id, name, role}]' }
   /v1/orgs/{org}/members:
+    get:
+      summary: Members of the organisation (admin)
+      parameters: [ { $ref: '#/components/parameters/Org' } ]
+      responses:
+        '200': { description: '[{user_id, email, role}]' }
+        '403': { description: Role too low }
+        '404': { description: Organisation not found }
     post:
       summary: Add an existing user to the organisation
       description: Admins can add members; only owners can add admins. Owners cannot be added.
@@ -183,6 +211,19 @@ paths:
       responses:
         '200': { description: '{algorithm: ed25519, kid, public_key (base64)}' }
         '503': { description: Grant signing is not configured (ZHD_GRANT_KEY) }
+  /v1/orgs/{org}/grants:
+    get:
+      summary: Grants issued in the organisation
+      description: |
+        Newest first, at most `limit` (1-200, default 100). Admins see every operator's grants, a member only
+        their own. `status` is `active`, `expired` or `revoked`. A grant lives 60 seconds and is a statement
+        of permission, not a running session; the signed token is not stored and not listed.
+      parameters:
+        - { $ref: '#/components/parameters/Org' }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: '[{grant_id, operator_id, operator_email, device_id, device_name, capabilities, mode, issued_at, expires_at, revoked_at, status}]' }
+        '404': { description: Organisation not found }
   /v1/orgs/{org}/devices/{device}/grants:
     post:
       summary: Ask for a short-lived signed session grant for a device

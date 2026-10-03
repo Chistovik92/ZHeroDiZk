@@ -1,0 +1,60 @@
+name: Web panel
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    paths:
+      - 'panel/**'
+      - 'packaging/panel/**'
+      - '.github/workflows/panel.yml'
+  pull_request:
+    paths:
+      - 'panel/**'
+      - 'packaging/panel/**'
+      - '.github/workflows/panel.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: panel/package-lock.json
+      - name: Install (lock file only)
+        working-directory: panel
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Type check and build
+        working-directory: panel
+        run: npm run build
+      - name: Tests
+        working-directory: panel
+        run: npm test
+      - name: Dependency audit (production)
+        working-directory: panel
+        run: npm audit --omit=dev --audit-level=high
+      - name: Archive
+        run: |
+          version=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          name="zherodizk-panel-$version"
+          mkdir -p "dist/packages/stage/$name"
+          cp -a panel/dist "dist/packages/stage/$name/site"
+          cp packaging/panel/default.conf.template packaging/panel/docker-compose.yml packaging/panel/Caddyfile "dist/packages/stage/$name/"
+          cp LICENSE NOTICE "dist/packages/stage/$name/"
+          tar -C dist/packages/stage -czf "dist/packages/$name.tar.gz" "$name"
+          rm -rf dist/packages/stage
+          (cd dist/packages && sha256sum -- * | tee SHA256SUMS-panel)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: panel-dist
+          path: dist/packages/
+          retention-days: 7

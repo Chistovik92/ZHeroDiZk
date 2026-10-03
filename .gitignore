@@ -6,3 +6,5 @@ __pycache__/
 /data/
 /dist/
 
+/panel/node_modules/
+/panel/dist/
