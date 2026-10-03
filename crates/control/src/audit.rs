@@ -50,6 +50,8 @@ pub async fn record<'e, E: PgExecutor<'e>>(
     Ok(())
 }
 
+type EventRow = (i64, Option<Uuid>, String, Option<String>, Value, DateTime<Utc>);
+
 #[derive(Deserialize)]
 struct ListQuery {
     limit: Option<i64>,
@@ -80,7 +82,7 @@ async fn list_events(
     let who = authenticate(&state, &headers).await?;
     require_role(&state, who.user_id, org, Role::Admin).await?;
     let limit = clamp_limit(query.limit);
-    let rows: Vec<(i64, Option<Uuid>, String, Option<String>, Value, DateTime<Utc>)> = sqlx::query_as(
+    let rows: Vec<EventRow> = sqlx::query_as(
         "SELECT id, actor_user_id, action, target, detail, created_at FROM audit_events \
          WHERE org_id = $1 AND ($2::bigint IS NULL OR id < $2) ORDER BY id DESC LIMIT $3",
     )
