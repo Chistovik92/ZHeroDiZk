@@ -62,7 +62,7 @@
 
 ## Как сообщать о проблемах
 
-Пишите автору (Telegram @SecretHero) или в https://github.com/Chistovik92/ZHeroDiZk/issues: версия выпуска,
+Пишите автору (Telegram: https://t.me/SecretHero) или в https://github.com/Chistovik92/ZHeroDiZk/issues: версия выпуска,
 ОС, что делали, что ожидали, что получилось; логи клиента — Linux `~/.local/share/logs/ZHeroDiZk`,
 Windows — каталог ZHeroDiZk в `%APPDATA%` (путь по коду не проверялся; проверьте, что в логах нет паролей, прежде чем присылать).
 
