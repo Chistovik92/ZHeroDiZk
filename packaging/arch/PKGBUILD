@@ -1,0 +1,33 @@
+# Maintainer: SecretHero
+# Packages the prebuilt static ZHeroDiZk server binaries.
+# Build: place zherodizk-server-<ver>-linux-<arch>.tar.gz, zherodizk.sysusers,
+# zherodizk.tmpfiles, server.env and the two .service files next to this file and run
+#   ZHD_VERSION=<ver> makepkg -f
+pkgname=zherodizk-server
+pkgver=${ZHD_VERSION:?set ZHD_VERSION}
+pkgrel=1
+pkgdesc="ZHeroDiZk rendezvous and relay servers"
+arch=('x86_64' 'aarch64')
+url="https://github.com/Chistovik92/ZHeroDiZk"
+license=('AGPL-3.0-only')
+options=('!strip')
+backup=('etc/zherodizk/server.env')
+source=("zherodizk-server-${pkgver}-linux-${CARCH}.tar.gz"
+        'zherodizk.sysusers' 'zherodizk.tmpfiles' 'server.env'
+        'zhd-rendezvous.service' 'zhd-relay.service')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+package() {
+    cd "$srcdir/zherodizk-server-${pkgver}-${CARCH}"
+    for bin in zhd-rendezvous zhd-relay zhd-utils; do
+        install -Dm755 "$bin" "$pkgdir/usr/bin/$bin"
+    done
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 NOTICE "$pkgdir/usr/share/licenses/$pkgname/NOTICE"
+    cd "$srcdir"
+    install -Dm644 zhd-rendezvous.service "$pkgdir/usr/lib/systemd/system/zhd-rendezvous.service"
+    install -Dm644 zhd-relay.service "$pkgdir/usr/lib/systemd/system/zhd-relay.service"
+    install -Dm640 server.env "$pkgdir/etc/zherodizk/server.env"
+    install -Dm644 zherodizk.sysusers "$pkgdir/usr/lib/sysusers.d/zherodizk.conf"
+    install -Dm644 zherodizk.tmpfiles "$pkgdir/usr/lib/tmpfiles.d/zherodizk.conf"
+}
