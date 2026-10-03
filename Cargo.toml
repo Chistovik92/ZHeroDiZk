@@ -9,3 +9,9 @@ edition = "2021"
 license = "AGPL-3.0-only"
 rust-version = "1.75"
 
+# Password hashing is deliberately expensive; keep tests fast in debug builds.
+[profile.dev.package.argon2]
+opt-level = 3
+
+[profile.dev.package.blake2]
+opt-level = 3

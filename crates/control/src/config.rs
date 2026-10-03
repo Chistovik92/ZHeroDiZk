@@ -9,6 +9,8 @@ pub const DEFAULT_LISTEN: &str = "127.0.0.1:21114";
 pub struct Config {
     pub listen: SocketAddr,
     pub database_url: String,
+    /// Whether accounts other than the very first one may be created through the API.
+    pub allow_registration: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -17,6 +19,8 @@ pub enum ConfigError {
     MissingDatabaseUrl,
     #[error("ZHD_LISTEN is not a valid socket address: {0}")]
     InvalidListen(String),
+    #[error("ZHD_ALLOW_REGISTRATION must be true or false, got: {0}")]
+    InvalidFlag(String),
 }
 
 impl Config {
@@ -33,7 +37,13 @@ impl Config {
         let listen = listen_text
             .parse()
             .map_err(|_| ConfigError::InvalidListen(listen_text))?;
-        Ok(Self { listen, database_url })
+        let allow_registration = match get("ZHD_ALLOW_REGISTRATION").map(|v| v.trim().to_lowercase()) {
+            None => false,
+            Some(v) if v.is_empty() || v == "false" || v == "0" => false,
+            Some(v) if v == "true" || v == "1" => true,
+            Some(other) => return Err(ConfigError::InvalidFlag(other)),
+        };
+        Ok(Self { listen, database_url, allow_registration })
     }
 
     pub fn from_env() -> Result<Self, ConfigError> {
@@ -81,5 +91,17 @@ mod tests {
             ("ZHD_LISTEN", "not-an-address"),
         ]));
         assert_eq!(bad, Err(ConfigError::InvalidListen("not-an-address".into())));
+    }
+
+    #[test]
+    fn registration_flag_is_strict_and_closed_by_default() {
+        let base = [("ZHD_DATABASE_URL", "postgres://x")];
+        assert!(!Config::from_lookup(lookup(&base)).unwrap().allow_registration);
+        for (text, expected) in [("true", true), ("1", true), ("TRUE", true), ("false", false), ("0", false), ("", false)] {
+            let config = Config::from_lookup(lookup(&[base[0], ("ZHD_ALLOW_REGISTRATION", text)])).unwrap();
+            assert_eq!(config.allow_registration, expected, "{text:?}");
+        }
+        let bad = Config::from_lookup(lookup(&[base[0], ("ZHD_ALLOW_REGISTRATION", "yes")]));
+        assert_eq!(bad, Err(ConfigError::InvalidFlag("yes".into())));
     }
 }

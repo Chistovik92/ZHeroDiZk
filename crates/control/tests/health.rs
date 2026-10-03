@@ -3,7 +3,7 @@
 
 use axum::{body::Body, http::Request, http::StatusCode};
 use tower::ServiceExt;
-use zherodizk_control::{connect_and_migrate, router, AppState};
+use zherodizk_control::{connect_and_migrate, router, AppState, AuthSettings};
 
 #[tokio::test]
 async fn healthz_reports_database_ok_after_migration() {
@@ -17,7 +17,7 @@ async fn healthz_reports_database_ok_after_migration() {
         .await
         .expect("schema_info exists");
     assert_eq!(row.0, 1);
-    let app = router(AppState { pool });
+    let app = router(AppState { pool, settings: AuthSettings::default() });
     let response = app
         .oneshot(Request::builder().uri("/healthz").body(Body::empty()).unwrap())
         .await
