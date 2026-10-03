@@ -3,7 +3,7 @@ members = ["crates/access-policy", "crates/control", "crates/grant"]
 resolver = "2"
 
 [workspace.package]
-version = "0.7.5"
+version = "0.7.6"
 authors = ["SecretHero"]
 edition = "2021"
 license = "AGPL-3.0-only"

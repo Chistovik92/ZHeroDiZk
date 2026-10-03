@@ -171,7 +171,11 @@ jobs:
       - name: Component and licence report
         run: |
           (cd vendor/client && cargo metadata --format-version 1 --locked --filter-platform x86_64-unknown-linux-gnu) > dist/build-report/cargo-metadata.json
-          python3 tools/sbom.py --cargo-metadata dist/build-report/cargo-metadata.json             --pubspec-lock vendor/client/flutter/pubspec.lock             --output dist/build-report/sbom.cdx.json | tee dist/build-report/sbom-summary.txt
+          python3 tools/sbom.py --cargo-metadata dist/build-report/cargo-metadata.json \
+            --pubspec-lock vendor/client/flutter/pubspec.lock \
+            --dart-package-config vendor/client/flutter/.dart_tool/package_config.json \
+            --vcpkg-installed "$VCPKG_ROOT/installed" \
+            --output dist/build-report/sbom.cdx.json | tee dist/build-report/sbom-summary.txt
           rm dist/build-report/cargo-metadata.json
 
       - name: Build installable packages (test releases only)

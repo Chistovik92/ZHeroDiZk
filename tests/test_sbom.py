@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import json
+import base64
 import tempfile
 import unittest
 from pathlib import Path
@@ -27,6 +28,70 @@ sdks:
 
 
 class SbomTests(unittest.TestCase):
+    def test_dart_license_text_from_relative_and_file_uri_roots(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            config = root / ".dart_tool/package_config.json"
+            config.parent.mkdir()
+            package = root / "package with spaces"
+            package.mkdir()
+            text = "Licence text — пример\n".encode("utf-8")
+            (package / "LICENSE").write_bytes(text)
+            for uri in ["../package%20with%20spaces", package.as_uri()]:
+                config.write_text(json.dumps({"configVersion": 2, "packages": [
+                    {"name": "async", "rootUri": uri}]}), encoding="utf-8")
+                components = sbom.dart_components('packages:\n  async:\n    version: "2.11.0"\n')
+                sbom.collect_dart_licenses(components, config)
+                report = sbom.build_report(components)
+                self.assertEqual(report["zherodizk"]["unknown_license_count"], 0)
+                license = report["components"][0]["licenses"][0]["license"]
+                self.assertEqual(base64.b64decode(license["text"]["content"]), text)
+
+    def test_dart_missing_license_stays_unknown_and_missing_config_entry_fails(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            config = root / "package_config.json"
+            config.write_text(json.dumps({"configVersion": 2, "packages": [
+                {"name": "async", "rootUri": "./"}]}), encoding="utf-8")
+            components = sbom.dart_components('packages:\n  async:\n    version: "2.11.0"\n')
+            sbom.collect_dart_licenses(components, config)
+            self.assertEqual(components[0]["license"], sbom.UNKNOWN)
+            config.write_text('{"configVersion": 2, "packages": []}', encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "missing"):
+                sbom.collect_dart_licenses(components, config)
+
+    def test_vcpkg_licenses_exclude_features_and_uninstalled_packages(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "vcpkg").mkdir()
+            (root / "vcpkg/status").write_text(
+                "Package: zlib\nVersion: 1.3.1\nArchitecture: x64-linux\nStatus: install ok installed\n\n"
+                "Package: zlib\nFeature: tools\nArchitecture: x64-linux\nStatus: install ok installed\n\n"
+                "Package: old\nVersion: 1\nArchitecture: x64-linux\nStatus: deinstall ok not-installed\n", encoding="utf-8")
+            share = root / "x64-linux/share/zlib"
+            share.mkdir(parents=True)
+            (share / "copyright").write_bytes(b"actual upstream licence\n")
+            components = sbom.vcpkg_components(root)
+            self.assertEqual(len(components), 1)
+            self.assertEqual(components[0]["name"], "zlib")
+            self.assertEqual(components[0]["license"], "SEE-LICENSE-FILE")
+            self.assertEqual(sbom.build_report(components)["zherodizk"]["unknown_license_count"], 0)
+
+    def test_remote_dart_root_and_escaping_vcpkg_path_are_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            config = root / "package_config.json"
+            config.write_text(json.dumps({"configVersion": 2, "packages": [
+                {"name": "async", "rootUri": "https://example.invalid/package"}]}), encoding="utf-8")
+            components = sbom.dart_components('packages:\n  async:\n    version: "2.11.0"\n')
+            with self.assertRaisesRegex(ValueError, "local"):
+                sbom.collect_dart_licenses(components, config)
+            (root / "vcpkg").mkdir()
+            (root / "vcpkg/status").write_text(
+                "Package: ../../outside\nVersion: 1\nArchitecture: x64-linux\nStatus: install ok installed\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "escapes"):
+                sbom.vcpkg_components(root)
+
     def test_rust_licenses_and_unknown(self):
         meta = {"packages": [
             {"name": "serde", "version": "1.0.0", "license": "MIT OR Apache-2.0", "source": "registry"},
