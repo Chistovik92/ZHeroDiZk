@@ -7,6 +7,7 @@ pub mod auth;
 pub mod config;
 pub mod crypto;
 pub mod devices;
+pub mod groups;
 pub mod orgs;
 pub mod password;
 pub mod totp;
@@ -75,6 +76,7 @@ pub fn router(state: AppState) -> Router {
         .merge(auth::routes())
         .merge(orgs::routes())
         .merge(devices::routes())
+        .merge(groups::routes())
         .with_state(state)
 }
 
