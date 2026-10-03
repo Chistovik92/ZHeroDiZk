@@ -13,7 +13,7 @@ else:
 
 def launch(argv=None, bundle=None, check=None, execute=None):
     argv = sys.argv[1:] if argv is None else argv
-    bundle = Path(__file__).resolve().parent if bundle is None else Path(bundle)
+    bundle = Path(__file__).resolve().parent if bundle is None else Path(bundle).resolve()
     check = doctor.main if check is None else check
     execute = os.execv if execute is None else execute
     if argv == ["--doctor"]:

@@ -79,6 +79,21 @@ class DoctorTests(unittest.TestCase):
 
 
 class BootstrapTests(unittest.TestCase):
+    def test_malformed_lock_entries_raise_value_error(self):
+        for validate, component, url in [
+            (bootstrap.validate_lock, "client", "https://github.com/rustdesk/rustdesk.git"),
+            (bootstrap.validate_server_lock, "server", "https://github.com/rustdesk/rustdesk-server.git"),
+        ]:
+            for lock in [None, [], {}, {"schema_version": 1},
+                         {"schema_version": 1, component: None},
+                         {"schema_version": 1, component: []},
+                         {"schema_version": 1, component: {}},
+                         *({"schema_version": 1, component: {"url": url, "commit": value}}
+                           for value in [None, 123, [], {}])]:
+                with self.subTest(component=component, lock=lock):
+                    with self.assertRaises(ValueError):
+                        validate(lock)
+
     def lock(self):
         return {"schema_version": 1, "client": {
             "url": "https://github.com/rustdesk/rustdesk.git", "commit": "a" * 40}}

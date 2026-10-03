@@ -12,23 +12,29 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def validate_lock(lock):
-    client = lock["client"]
-    if lock.get("schema_version") != 1:
+    if not isinstance(lock, dict) or lock.get("schema_version") != 1:
         raise ValueError("Unsupported lock schema")
-    if client["url"] != "https://github.com/rustdesk/rustdesk.git":
+    client = lock.get("client")
+    if not isinstance(client, dict):
+        raise ValueError("Expected client object")
+    if client.get("url") != "https://github.com/rustdesk/rustdesk.git":
         raise ValueError("Unexpected upstream URL")
-    if not re.fullmatch(r"[0-9a-f]{40}", client["commit"]):
+    commit = client.get("commit")
+    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise ValueError("Expected full immutable commit SHA")
     return client
 
 
 def validate_server_lock(lock):
-    server = lock["server"]
-    if lock.get("schema_version") != 1:
+    if not isinstance(lock, dict) or lock.get("schema_version") != 1:
         raise ValueError("Unsupported lock schema")
-    if server["url"] != "https://github.com/rustdesk/rustdesk-server.git":
+    server = lock.get("server")
+    if not isinstance(server, dict):
+        raise ValueError("Expected server object")
+    if server.get("url") != "https://github.com/rustdesk/rustdesk-server.git":
         raise ValueError("Unexpected upstream URL")
-    if not re.fullmatch(r"[0-9a-f]{40}", server["commit"]):
+    commit = server.get("commit")
+    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise ValueError("Expected full immutable commit SHA")
     return server
 

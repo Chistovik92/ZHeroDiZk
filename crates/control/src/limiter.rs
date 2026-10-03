@@ -77,8 +77,12 @@ impl RateLimiter {
 /// trusted reverse proxy, otherwise the peer address of the connection.
 pub fn client_address(request: &Request, trust_forwarded_for: bool) -> Option<IpAddr> {
     if trust_forwarded_for {
-        let forwarded = request.headers().get("x-forwarded-for")?.to_str().ok()?;
-        return forwarded.split(',').next()?.trim().parse().ok();
+        if let Some(address) = request.headers().get("x-forwarded-for")
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.split(',').next())
+            .and_then(|value| value.trim().parse().ok()) {
+            return Some(address);
+        }
     }
     request.extensions().get::<ConnectInfo<SocketAddr>>().map(|info| info.0.ip())
 }
@@ -147,5 +151,19 @@ mod tests {
         assert_eq!(client_address(&request, false), None, "ignored without a trusted proxy");
         let bad = Request::builder().header("x-forwarded-for", "not-an-ip").body(axum::body::Body::empty()).unwrap();
         assert_eq!(client_address(&bad, true), None);
+    }
+
+    #[test]
+    fn missing_or_invalid_forwarded_address_falls_back_to_peer() {
+        let peer: SocketAddr = "127.0.0.1:12345".parse().unwrap();
+        for forwarded in [None, Some("not-an-ip"), Some("")] {
+            let mut request = Request::builder();
+            if let Some(value) = forwarded {
+                request = request.header("x-forwarded-for", value);
+            }
+            let mut request = request.body(axum::body::Body::empty()).unwrap();
+            request.extensions_mut().insert(ConnectInfo(peer));
+            assert_eq!(client_address(&request, true), Some(peer.ip()));
+        }
     }
 }

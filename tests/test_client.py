@@ -13,6 +13,14 @@ from tools.check_client_identity import validate
 
 
 class LauncherTests(unittest.TestCase):
+    def test_relative_bundle_uses_absolute_executable_path(self):
+        calls = []
+        with patch.object(Path, "is_file", return_value=True):
+            self.assertEqual(launch([], "relative bundle", lambda _: 0,
+                                   lambda *a: calls.append(a)), 0)
+        binary = str((Path("relative bundle") / "zherodizk").resolve())
+        self.assertEqual(calls, [(binary, [binary])])
+
     def test_diagnostic_error_prevents_execution(self):
         calls = []
         self.assertEqual(launch([], check=lambda _: 2, execute=lambda *a: calls.append(a)), 2)
