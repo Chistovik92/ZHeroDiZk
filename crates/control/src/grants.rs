@@ -184,6 +184,7 @@ mod tests {
 
     #[test]
     fn server_ttl_is_within_what_devices_accept() {
-        assert!(GRANT_TTL_SECS > 0 && GRANT_TTL_SECS <= zherodizk_grant::MAX_LIFETIME_SECS);
+        let (ttl, max) = (std::hint::black_box(GRANT_TTL_SECS), zherodizk_grant::MAX_LIFETIME_SECS);
+        assert!(ttl > 0 && ttl <= max);
     }
 }

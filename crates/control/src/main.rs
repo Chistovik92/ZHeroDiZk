@@ -6,7 +6,7 @@ use zherodizk_control::{config::Config, connect_and_migrate, router, AppState, A
 
 /// Prints two fresh random keys in the form the settings expect. Nothing is stored.
 fn generate_keys() {
-    let mut key = || {
+    let key = || {
         let mut bytes = [0u8; 32];
         OsRng.fill_bytes(&mut bytes);
         STANDARD.encode(bytes)
