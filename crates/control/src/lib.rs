@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! ZHeroDiZk control server. Stage 0.4.4: configuration, database, health check, local accounts
-//! with sessions and MFA, organisations and device enrolment. There are no remote-access
-//! rights yet: nothing here lets anyone connect to a device.
+//! ZHeroDiZk control server: configuration, database, health check, local accounts with sessions
+//! and MFA, organisations, device enrolment, groups, access rules, audit log and signed session
+//! grants. Nothing here connects anyone to a device: a grant is only a statement of permission
+//! that the device agent must verify.
 
 pub mod audit;
 pub mod auth;
 pub mod config;
 pub mod crypto;
 pub mod devices;
+pub mod grants;
 pub mod groups;
 pub mod orgs;
 pub mod password;
@@ -29,6 +31,8 @@ pub struct AuthSettings {
     pub lockout_secs: i64,
     /// Key that encrypts TOTP secrets at rest; without it MFA endpoints answer 503.
     pub mfa_key: Option<[u8; crypto::KEY_LEN]>,
+    /// Seed of the Ed25519 key that signs session grants; without it grant endpoints answer 503.
+    pub grant_key: Option<[u8; 32]>,
     /// Seconds added to the real clock when checking one-time codes. Always 0 in production;
     /// tests move it to step through TOTP periods without waiting.
     pub time_offset: Arc<AtomicI64>,
@@ -42,6 +46,7 @@ impl std::fmt::Debug for AuthSettings {
             .field("max_failed_attempts", &self.max_failed_attempts)
             .field("lockout_secs", &self.lockout_secs)
             .field("mfa_key", &self.mfa_key.map(|_| "<redacted>"))
+            .field("grant_key", &self.grant_key.map(|_| "<redacted>"))
             .finish()
     }
 }
@@ -54,6 +59,7 @@ impl Default for AuthSettings {
             max_failed_attempts: 5,
             lockout_secs: 15 * 60,
             mfa_key: None,
+            grant_key: None,
             time_offset: Arc::new(AtomicI64::new(0)),
         }
     }
@@ -79,6 +85,7 @@ pub fn router(state: AppState) -> Router {
         .merge(devices::routes())
         .merge(groups::routes())
         .merge(audit::routes())
+        .merge(grants::routes())
         .with_state(state)
 }
 
@@ -144,6 +151,9 @@ pub const API_ROUTES: &[(&str, &str)] = &[
     ("POST", "/v1/orgs/{org}/members"),
     ("POST", "/v1/orgs/{org}/enrollment-tokens"),
     ("GET", "/v1/orgs/{org}/audit"),
+    ("GET", "/v1/grants/public-key"),
+    ("POST", "/v1/orgs/{org}/devices/{device}/grants"),
+    ("POST", "/v1/orgs/{org}/grants/{grant}/revoke"),
     ("POST", "/v1/devices/enroll"),
     ("GET", "/v1/orgs/{org}/devices"),
     ("POST", "/v1/orgs/{org}/devices/{device}/revoke"),

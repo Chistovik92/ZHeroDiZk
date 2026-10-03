@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: ZHeroDiZk control server API
-  version: 0.4.6
+  version: 0.5.1
   description: |
     Control server API (stage 0.4.x): local accounts, sessions, multi-factor authentication,
     organisations, device enrolment, groups, access rules, address books and an audit log.
@@ -174,6 +174,47 @@ paths:
         '200': { description: '{events: [{id, actor_user_id, action, target, detail, created_at}], next_before}' }
         '403': { description: Role too low }
         '404': { description: Organisation not found }
+  /v1/grants/public-key:
+    get:
+      summary: Public key that devices use to verify session grants
+      security: []
+      responses:
+        '200': { description: '{algorithm: ed25519, kid, public_key (base64)}' }
+        '503': { description: Grant signing is not configured (ZHD_GRANT_KEY) }
+  /v1/orgs/{org}/devices/{device}/grants:
+    post:
+      summary: Ask for a short-lived signed session grant for a device
+      description: |
+        Allowed only if the caller's access rules give capabilities on the device; the grant carries at most
+        those (or the requested subset). Valid 60 seconds, bound to one device and one operator, signed with Ed25519.
+        The token is returned once and never stored; its content and lifetime are verified by the device.
+        A grant does not connect anyone: the device decides, with its own local rules and consent.
+      parameters: [ { $ref: '#/components/parameters/Org' }, { $ref: '#/components/parameters/Device' } ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                capabilities:
+                  type: array
+                  items: { type: string, enum: [view, input, file_transfer, clipboard] }
+                mode: { type: string, enum: [attended, unattended], default: attended }
+      responses:
+        '201': { description: '{grant_id, token, capabilities, mode, not_before, expires_at (unix seconds)}' }
+        '400': { description: Unknown capability or mode }
+        '403': { description: No access rule, or requested capabilities exceed the rules }
+        '404': { description: Not a member, or device not found }
+        '503': { description: Grant signing is not configured }
+  /v1/orgs/{org}/grants/{grant}/revoke:
+    post:
+      summary: Revoke a grant (its operator, or an admin)
+      parameters:
+        - { $ref: '#/components/parameters/Org' }
+        - { name: grant, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Revoked }
+        '404': { description: Not found, already revoked, or not yours }
   /v1/devices/enroll:
     post:
       summary: Enrol a device with proof of key ownership
