@@ -17,5 +17,5 @@ jobs:
       - name: Rust toolchain
         run: rustup toolchain install 1.85.1 --profile minimal
       - name: Rust policy tests
-        run: cargo +1.85.1 test -p zherodizk-access-policy
+        run: cargo +1.85.1 test --locked -p zherodizk-access-policy
 
