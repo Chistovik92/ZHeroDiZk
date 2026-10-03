@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Prepare a clean, pinned upstream checkout for the Linux baseline build."""
 import argparse
+import hashlib
 import json
 import subprocess
 from pathlib import Path
@@ -38,17 +39,42 @@ def collect_changes(source, manifest, pending):
         pending[path] = content.replace(change["before"], change["after"])
 
 
-def write_pending(pending):
+def collect_files(source, manifest, pending_files):
+    """Queue whole-file replacements (icons). The original must be the expected upstream file."""
+    source = Path(source).resolve()
+    for item in manifest.get("files", []):
+        path = (source / item["path"]).resolve()
+        if not path.is_relative_to(source) or path == source:
+            raise ValueError("File replacement escapes source checkout")
+        try:
+            current = path.read_bytes()
+        except OSError as exc:
+            raise ValueError(f"Upstream file missing: {item['path']}") from exc
+        if item.get("normalize_eol"):
+            current = current.replace(bytes([13, 10]), bytes([10]))
+        if hashlib.sha256(current).hexdigest() != item["sha256_before"]:
+            raise ValueError(f"Upstream file changed: {item['path']}")
+        pending_files[path] = (ROOT / item["source"]).read_bytes()
+
+
+def write_pending(pending, pending_files=None):
     # Every expected source fragment is validated before anything is written.
     # If a write still fails, restore the files already changed.
+    pending_files = pending_files or {}
     originals = {}
+    original_files = {}
     try:
         for path, content in pending.items():
             originals[path] = read_source(path)
             write_source(path, content)
+        for path, data in pending_files.items():
+            original_files[path] = path.read_bytes()
+            path.write_bytes(data)
     except OSError:
         for path, text in originals.items():
             write_source(path, text)
+        for path, data in original_files.items():
+            path.write_bytes(data)
         raise
 
 
@@ -67,6 +93,7 @@ def prepare(source, profile="baseline", platform="linux"):
     if not submodules or any(line.startswith(("-", "+", "U")) for line in submodules.splitlines()):
         raise ValueError("Pinned submodules must be initialized without changes")
     pending = {}
+    pending_files = {}
     adjustments = []
     if platform == "linux":
         cargo = source / "Cargo.toml"
@@ -84,14 +111,15 @@ def prepare(source, profile="baseline", platform="linux"):
             if manifest.get("schema_version") != 1 or manifest.get("profile") != profile:
                 raise ValueError("Unsupported identity manifest")
             collect_changes(source, manifest, pending)
+            collect_files(source, manifest, pending_files)
             if name == platform:
                 identity = manifest
-    write_pending(pending)
+    write_pending(pending, pending_files)
     return {"upstream": client, "submodules": submodules,
             "adjustments": adjustments, "platform": platform,
             "profile": profile,
             "identity": {k: identity[k] for k in ("display_name", "binary_name", "gtk_application_id") if k in identity} if identity else None,
-            "changed_files": [str(p.relative_to(source)) for p in pending],
+            "changed_files": [p.relative_to(source).as_posix() for p in [*pending, *pending_files]],
             "branding": f"{platform.capitalize()} identity changed; upstream artwork retained" if identity else "Upstream UI retained for baseline verification",
             "policy_integrated": False, "distribution": "build verification only"}
 

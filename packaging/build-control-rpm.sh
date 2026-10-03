@@ -6,7 +6,7 @@ binary=$(CDPATH= cd -- "$(dirname -- "$1")" && pwd)/$(basename -- "$1"); version
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 top=$(mktemp -d)
 trap 'rm -rf "$top"' EXIT
-sed -e "s/@VERSION@/$version/" -e "s#@BINARY@#$binary#" -e "s#@SRCDIR@#$here#" \
+sed -e "s/@VERSION@/$version/" -e "s#@BINARY@#$binary#g" -e "s#@SRCDIR@#$here#g" \
     "$here/control/zherodizk-control.spec" > "$top/control.spec"
 mkdir -p "$out"
 rpmbuild -bb --target "$arch" --define "_topdir $top" --define "_rpmdir $(CDPATH= cd -- "$out" && pwd)" \

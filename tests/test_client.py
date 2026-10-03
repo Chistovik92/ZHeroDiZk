@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
+import hashlib
 import json
 import subprocess
 import tempfile
@@ -160,6 +161,17 @@ class PreparationTests(unittest.TestCase):
         contents = {}
         for name in ("common", platform):
             data = json.loads((client_dir / f"{name}-identity.json").read_text(encoding="utf-8"))
+            for item in data.get("files", []):
+                # Stand-in for the upstream file, with its hash written into the manifest copy.
+                target = self.source / item["path"]
+                target.parent.mkdir(parents=True, exist_ok=True)
+                stand_in = bytes([85, 13, 10, 86, 10]) if item.get("normalize_eol") else b"\x00upstream"
+                target.write_bytes(stand_in)
+                compared = stand_in.replace(bytes([13, 10]), bytes([10])) if item.get("normalize_eol") else stand_in
+                item["sha256_before"] = hashlib.sha256(compared).hexdigest()
+                replacement = self.root / item["source"]
+                replacement.parent.mkdir(parents=True, exist_ok=True)
+                replacement.write_bytes((client_dir.parent / item["source"]).read_bytes())
             (self.root / "client" / f"{name}-identity.json").write_text(json.dumps(data), encoding="utf-8")
             for change in data["changes"]:
                 contents.setdefault(change["path"], []).append(change["before"])
@@ -205,6 +217,43 @@ class PreparationTests(unittest.TestCase):
         for change in data["changes"]:
             self.assertNotIn(chr(10), change["before"], "anchors must be single-line (CRLF checkouts)")
             self.assertNotIn("rustdesk.com", change["after"])
+
+    def test_branding_files_replace_upstream_icons(self):
+        self.identity_fixture("windows")
+        report = prepare_client.prepare(self.source, "zherodizk", "windows")
+        icon = (self.source / "flutter/windows/runner/resources/app_icon.ico").read_bytes()
+        self.assertEqual(icon, (Path(__file__).resolve().parents[1] / "client/branding/app_icon.ico").read_bytes())
+        self.assertIn("flutter/assets/icon.svg", report["changed_files"])
+        self.assertIn(b"<svg", (self.source / "flutter/assets/icon.svg").read_bytes())
+
+    def test_changed_upstream_icon_is_refused_without_writing_anything(self):
+        self.identity_fixture("windows")
+        (self.source / "flutter/windows/runner/resources/app_icon.ico").write_bytes(b"someone else's icon")
+        self.commit(self.source)
+        lock_path = self.root / "upstream.lock.json"
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        lock["client"]["commit"] = bootstrap.git(self.source, "rev-parse", "HEAD")
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Upstream file changed"):
+            prepare_client.prepare(self.source, "zherodizk", "windows")
+        self.assertEqual(bootstrap.git(self.source, "status", "--porcelain"), "")
+
+    def test_failed_file_write_restores_text_and_binary_files(self):
+        self.identity_fixture("windows")
+        icon = self.source / "flutter/windows/runner/resources/app_icon.ico"
+        before = icon.read_bytes()
+        real_write_bytes = Path.write_bytes
+
+        def failing(path, data):
+            if path.name == "app_icon.ico" and data != before:
+                raise OSError("disk full")
+            return real_write_bytes(path, data)
+
+        with patch.object(Path, "write_bytes", failing):
+            with self.assertRaises(OSError):
+                prepare_client.prepare(self.source, "zherodizk", "windows")
+        self.assertEqual(bootstrap.git(self.source, "status", "--porcelain"), "")
+        self.assertEqual(icon.read_bytes(), before)
 
     def test_windows_identity_leaves_cargo_untouched(self):
         self.identity_fixture("windows")
