@@ -2,7 +2,7 @@
 
 Автор: SecretHero.
 
-Версия проекта: 0.5.1 (пре-релиз, исходный код без бинарников; выпуски v0.1.1–v0.1.5, v0.3.4, v0.4.0, v0.5.1). Это начало разработки, не законченный продукт.
+Версия проекта: 0.5.2 (пре-релиз, исходный код без бинарников; выпуски v0.1.1–v0.1.5, v0.3.4, v0.4.0, v0.5.1, v0.5.2). Это начало разработки, не законченный продукт.
 Дорожная карта и версии: [ROADMAP.md](ROADMAP.md).
 PR: https://github.com/Chistovik92/ZHeroDiZk/pull/2.
 
@@ -53,6 +53,12 @@ libxdot.so.4 не принимается за libxdo. Launcher останавл�
 Устранены две найденные сборкой ошибки: конфликт зависимости libunwind-dev
 и недостаточная история Git для закреплённых портов vcpkg.
 Новый код сохраняет AGPL-3.0-only; вопрос лицензии hbb_common — в LICENSING.md.
+
+## Упаковка сервера управления, ограничение частоты, значок (3 октября 2026)
+
+- Ограничение частоты анонимных запросов проверено тестами на PostgreSQL (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37085451401).
+- Пакеты `zherodizk-control` (deb, rpm, tarball; x86_64 и aarch64), юнит systemd, Docker Compose с PostgreSQL: сборка, установка на 8 дистрибутивах, запуск службы с настоящим PostgreSQL на раннере со systemd и через Compose проверены в CI (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37092687297).
+- Клиенты Linux (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37086311425) и Windows (https://github.com/Chistovik92/ZHeroDiZk/actions/runs/37086313897) собираются со значком и строками ZHeroDiZk; в бинарниках нет чужих адресов. Внешний вид в работе не проверялся (клиент не запускался).
 
 ## Разрешения на сеанс (3 октября 2026)
 

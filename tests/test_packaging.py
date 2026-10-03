@@ -54,3 +54,90 @@ class PackagingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+CONTROL = ROOT / "control"
+
+
+class ControlPackagingTests(unittest.TestCase):
+    def test_unit_is_strongly_sandboxed(self):
+        unit = (CONTROL / "zherodizk-control.service").read_text(encoding="utf-8")
+        for line in ("User=zherodizk-control", "UMask=0077", "NoNewPrivileges=true", "ProtectSystem=strict",
+                     "CapabilityBoundingSet=", "MemoryDenyWriteExecute=true", "SystemCallFilter=@system-service",
+                     "EnvironmentFile=/etc/zherodizk/control.env", "ExecStart=/usr/bin/zherodizk-control"):
+            self.assertIn(line, unit)
+        self.assertNotIn("ReadWritePaths", unit, "the control server keeps no local state")
+
+    def test_env_template_lists_every_setting_the_server_reads(self):
+        env = (CONTROL / "control.env").read_text(encoding="utf-8")
+        config = (ROOT.parent / "crates/control/src/config.rs").read_text(encoding="utf-8")
+        for variable in ("ZHD_DATABASE_URL", "ZHD_LISTEN", "ZHD_ALLOW_REGISTRATION", "ZHD_AUTH_RATE_LIMIT",
+                         "ZHD_TRUST_FORWARDED_FOR", "ZHD_MFA_KEY", "ZHD_GRANT_KEY"):
+            self.assertRegex(env, rf"(?m)^{variable}=", variable)
+            self.assertIn(f'"{variable}"', config, f"{variable} is not read by the server")
+
+    def test_defaults_are_the_safe_ones(self):
+        env = (CONTROL / "control.env").read_text(encoding="utf-8")
+        self.assertIn("ZHD_LISTEN=127.0.0.1:", env)
+        self.assertIn("ZHD_ALLOW_REGISTRATION=false", env)
+        self.assertIn("ZHD_TRUST_FORWARDED_FOR=false", env)
+        self.assertIn("CHANGE_ME", env, "the template must not ship a usable password")
+
+    def test_packages_install_the_same_files_with_restricted_secrets(self):
+        spec = (CONTROL / "zherodizk-control.spec").read_text(encoding="utf-8")
+        deb = (ROOT / "build-control-deb.sh").read_text(encoding="utf-8")
+        postinst = (CONTROL / "postinst").read_text(encoding="utf-8")
+        self.assertIn("%attr(0640,root,zherodizk-control) /etc/zherodizk/control.env", spec)
+        self.assertIn("install -m 0640", deb)
+        self.assertIn("chmod 0640 /etc/zherodizk/control.env", postinst)
+        for text in (spec, deb):
+            self.assertIn("zherodizk-control.service", text)
+            self.assertIn("Caddyfile", text)
+
+    def test_compose_publishes_on_loopback_and_requires_a_password(self):
+        compose = (CONTROL / "docker-compose.yml").read_text(encoding="utf-8")
+        self.assertIn('"127.0.0.1:21114:21114"', compose)
+        self.assertIn("POSTGRES_PASSWORD:?", compose)
+        for needle in ("read_only: true", "cap_drop: [ALL]", "no-new-privileges"):
+            self.assertIn(needle, compose)
+
+    def test_proxy_examples_set_forwarded_for_from_the_peer(self):
+        nginx = (CONTROL / "nginx.conf").read_text(encoding="utf-8")
+        self.assertIn("proxy_set_header X-Forwarded-For $remote_addr;", nginx)
+
+    def test_scripts_are_strict_posix_shell(self):
+        for name in ("build-control-deb.sh", "build-control-rpm.sh"):
+            body = (ROOT / name).read_text(encoding="utf-8")
+            self.assertTrue(body.startswith("#!/bin/sh"), name)
+            self.assertIn("set -eu", body)
+
+
+CLIENT = ROOT / "client"
+
+
+class ClientPackagingTests(unittest.TestCase):
+    def test_wrapper_starts_the_diagnostic_launcher_from_the_install_directory(self):
+        wrapper = (CLIENT / "zherodizk-wrapper").read_text(encoding="utf-8")
+        self.assertTrue(wrapper.startswith("#!/bin/sh"))
+        self.assertIn("/opt/zherodizk/zherodizk.py", wrapper)
+
+    def test_deb_and_rpm_install_the_same_places(self):
+        script = (CLIENT / "build-linux-client.sh").read_text(encoding="utf-8")
+        spec = (CLIENT / "zherodizk-client.spec").read_text(encoding="utf-8")
+        for needle in ("/opt/zherodizk", "/usr/bin/zherodizk", "zherodizk.desktop", "zherodizk.png"):
+            self.assertIn(needle, script, needle)
+            self.assertIn(needle, spec, needle)
+        self.assertIn("set -eu", script)
+
+    def test_dependencies_include_the_libraries_found_in_the_ci_report(self):
+        control = (CLIENT / "control.in").read_text(encoding="utf-8")
+        for library in ("libgtk-3-0", "libxdo3", "python3", "libpulse0", "libxcb-randr0"):
+            self.assertIn(library, control)
+
+    def test_readmes_state_the_limits_honestly(self):
+        for name in ("README-linux.txt", "README-windows.txt"):
+            text = (CLIENT / name).read_text(encoding="utf-8")
+            for needle in ("TEST BUILD", "NOT a finished product", "does not enforce managed session grants",
+                           "no default server", "AGPL-3.0-only", "@SecretHero"):
+                self.assertIn(needle, text, f"{name}: {needle}")
+        self.assertIn("NOT code-signed", (CLIENT / "README-windows.txt").read_text(encoding="utf-8"))

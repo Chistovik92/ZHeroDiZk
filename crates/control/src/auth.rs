@@ -87,13 +87,18 @@ enum LoginResponse {
     MfaRequired { mfa_required: bool, mfa_token: String, expires_at: DateTime<Utc> },
 }
 
-pub fn routes() -> Router<AppState> {
+/// Endpoints an anonymous caller can reach; the server rate-limits them per address.
+pub fn anonymous_routes() -> Router<AppState> {
     Router::new()
         .route("/v1/auth/register", post(register))
         .route("/v1/auth/login", post(login))
+        .route("/v1/auth/login/mfa", post(login_mfa))
+}
+
+pub fn routes() -> Router<AppState> {
+    Router::new()
         .route("/v1/auth/logout", post(logout))
         .route("/v1/auth/me", get(me))
-        .route("/v1/auth/login/mfa", post(login_mfa))
         .route("/v1/auth/mfa/enroll", post(mfa_enroll))
         .route("/v1/auth/mfa/confirm", post(mfa_confirm))
         .route("/v1/auth/mfa/disable", post(mfa_disable))

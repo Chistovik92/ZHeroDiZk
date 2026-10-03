@@ -55,5 +55,13 @@
       "before": "std::wstring app_name = L\"RustDesk\";",
       "after": "std::wstring app_name = L\"ZHeroDiZk\";"
     }
+  ],
+  "files": [
+    {
+      "path": "flutter/windows/runner/resources/app_icon.ico",
+      "sha256_before": "4df7655c74f6027bed31b266d69e6dbcf12f075ff0b0a316a2a5fe6f05c53edc",
+      "normalize_eol": false,
+      "source": "client/branding/app_icon.ico"
+    }
   ]
 }

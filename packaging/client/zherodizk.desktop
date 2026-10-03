@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=ZHeroDiZk
+Comment=Remote desktop (test build)
+Exec=/usr/bin/zherodizk
+Icon=zherodizk
+Terminal=false
+Type=Application
+Categories=Network;RemoteAccess;

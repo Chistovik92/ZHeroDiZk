@@ -15,6 +15,10 @@ pub struct Config {
     pub mfa_key: Option<[u8; 32]>,
     /// 32-byte seed (base64) of the Ed25519 key that signs session grants.
     pub grant_key: Option<[u8; 32]>,
+    /// Anonymous requests per minute and address (0 = no limit).
+    pub auth_rate_limit: u32,
+    /// Trust `X-Forwarded-For` for the client address (only behind a trusted reverse proxy).
+    pub trust_forwarded_for: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -29,6 +33,8 @@ pub enum ConfigError {
     InvalidMfaKey,
     #[error("ZHD_GRANT_KEY must be 32 bytes encoded as standard base64")]
     InvalidGrantKey,
+    #[error("ZHD_AUTH_RATE_LIMIT must be a whole number of requests per minute (0 = off), got: {0}")]
+    InvalidRateLimit(String),
 }
 
 /// An optional 32-byte key in standard base64; empty or missing means "not configured".
@@ -40,6 +46,14 @@ fn parse_key(value: Option<String>) -> Result<Option<[u8; 32]>, ()> {
             let bytes = STANDARD.decode(text).map_err(|_| ())?;
             Ok(Some(<[u8; 32]>::try_from(bytes.as_slice()).map_err(|_| ())?))
         }
+    }
+}
+
+fn flag(value: Option<String>, name: &str) -> Result<bool, ConfigError> {
+    match value.map(|v| v.trim().to_lowercase()).as_deref() {
+        None | Some("") | Some("false") | Some("0") => Ok(false),
+        Some("true") | Some("1") => Ok(true),
+        Some(other) => Err(ConfigError::InvalidFlag(format!("{name}={other}"))),
     }
 }
 
@@ -65,7 +79,12 @@ impl Config {
         };
         let mfa_key = parse_key(get("ZHD_MFA_KEY")).map_err(|_| ConfigError::InvalidMfaKey)?;
         let grant_key = parse_key(get("ZHD_GRANT_KEY")).map_err(|_| ConfigError::InvalidGrantKey)?;
-        Ok(Self { listen, database_url, allow_registration, mfa_key, grant_key })
+        let auth_rate_limit = match get("ZHD_AUTH_RATE_LIMIT").map(|v| v.trim().to_owned()).filter(|v| !v.is_empty()) {
+            None => 30,
+            Some(text) => text.parse().map_err(|_| ConfigError::InvalidRateLimit(text))?,
+        };
+        let trust_forwarded_for = flag(get("ZHD_TRUST_FORWARDED_FOR"), "ZHD_TRUST_FORWARDED_FOR")?;
+        Ok(Self { listen, database_url, allow_registration, mfa_key, grant_key, auth_rate_limit, trust_forwarded_for })
     }
 
     pub fn from_env() -> Result<Self, ConfigError> {
@@ -125,6 +144,18 @@ mod tests {
         for bad in ["not base64!", "AQEB", "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="] {
             assert_eq!(Config::from_lookup(lookup(&[base, ("ZHD_MFA_KEY", bad)])), Err(ConfigError::InvalidMfaKey), "{bad}");
         }
+    }
+
+    #[test]
+    fn rate_limit_and_proxy_settings() {
+        let base = ("ZHD_DATABASE_URL", "postgres://x");
+        let defaults = Config::from_lookup(lookup(&[base])).unwrap();
+        assert_eq!((defaults.auth_rate_limit, defaults.trust_forwarded_for), (30, false));
+        let set = Config::from_lookup(lookup(&[base, ("ZHD_AUTH_RATE_LIMIT", "5"), ("ZHD_TRUST_FORWARDED_FOR", "true")])).unwrap();
+        assert_eq!((set.auth_rate_limit, set.trust_forwarded_for), (5, true));
+        assert_eq!(Config::from_lookup(lookup(&[base, ("ZHD_AUTH_RATE_LIMIT", "0")])).unwrap().auth_rate_limit, 0);
+        assert!(Config::from_lookup(lookup(&[base, ("ZHD_AUTH_RATE_LIMIT", "-1")])).is_err());
+        assert!(Config::from_lookup(lookup(&[base, ("ZHD_TRUST_FORWARDED_FOR", "maybe")])).is_err());
     }
 
     #[test]

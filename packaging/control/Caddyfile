@@ -1,0 +1,6 @@
+# TLS with automatic certificates in front of the control server.
+control.example.org {
+    reverse_proxy 127.0.0.1:21114
+}
+# Then set ZHD_TRUST_FORWARDED_FOR=true in /etc/zherodizk/control.env
+# (Caddy sets X-Forwarded-For itself).

@@ -2,6 +2,11 @@ name: Windows client
 
 on:
   workflow_dispatch:
+    inputs:
+      package:
+        description: 'Also build installable packages and keep them as a build artifact (test releases)'
+        type: boolean
+        default: false
   push:
     branches: ['claude/windows-client']
     paths:
@@ -178,7 +183,29 @@ jobs:
           flutter --version > dist/build-report/flutter-version.txt
           cat dist/build-report/binaries.sha256
 
-      # Only diagnostic evidence is uploaded; executables stay on the runner
+      - name: Build the portable archive (test releases only)
+        if: inputs.package
+        run: |
+          version=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          out=vendor/client/flutter/build/windows/x64/runner/Release
+          name="zherodizk-client-$version-windows-x64-portable"
+          mkdir -p "dist/stage/$name" dist/packages
+          cp -a "$out/." "dist/stage/$name/"
+          cp LICENSE NOTICE "dist/stage/$name/"
+          cp vendor/client/LICENCE "dist/stage/$name/THIRD-PARTY-LICENCE"
+          cp packaging/client/README-windows.txt "dist/stage/$name/README.txt"
+          (cd dist/stage && 7z a -tzip -mx=9 "../packages/$name.zip" "$name" > /dev/null)
+          (cd dist/packages && sha256sum -- * > SHA256SUMS && cat SHA256SUMS)
+
+      - name: Keep the archive for the release
+        if: inputs.package
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-client-dist
+          path: dist/packages/
+          retention-days: 7
+
+      # Diagnostic evidence is always uploaded; packages only for explicit test releases (package=true); executables otherwise stay on the runner
       # until the project's source, licence and security release gates pass.
       - name: Upload build evidence
         if: always()

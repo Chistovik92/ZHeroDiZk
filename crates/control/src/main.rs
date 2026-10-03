@@ -30,11 +30,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         allow_registration: config.allow_registration,
         mfa_key: config.mfa_key,
         grant_key: config.grant_key,
+        auth_rate_limit: config.auth_rate_limit,
+        trust_forwarded_for: config.trust_forwarded_for,
         ..AuthSettings::default()
     };
     let listener = tokio::net::TcpListener::bind(config.listen).await?;
     tracing::info!(listen = %config.listen, "control server started");
-    axum::serve(listener, router(AppState { pool, settings }))
+    // The peer address is needed by the rate limiter.
+    axum::serve(
+        listener,
+        router(AppState { pool, settings }).into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
         .with_graceful_shutdown(async {
             let _ = tokio::signal::ctrl_c().await;
         })

@@ -32,7 +32,7 @@ def prepare(source):
     write_pending(pending)
     return {"upstream": server, "submodules": submodules,
             "binaries": manifest["binaries"],
-            "changed_files": [str(p.relative_to(source)) for p in pending],
+            "changed_files": [p.relative_to(source).as_posix() for p in pending],
             "distribution": "build verification only"}
 
 

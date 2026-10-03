@@ -1,13 +1,15 @@
 openapi: 3.0.3
 info:
   title: ZHeroDiZk control server API
-  version: 0.5.1
+  version: 0.5.2
   description: |
     Control server API (stage 0.4.x): local accounts, sessions, multi-factor authentication,
     organisations, device enrolment, groups, access rules, address books and an audit log.
     **No endpoint grants remote access to a device yet**; session grants arrive in stage 0.5.
 
     Authentication: `Authorization: Bearer <token>` with the token returned by login.
+    Anonymous endpoints (register, login, second factor, device enrolment) are limited per client address
+    (default 30 requests per minute, `ZHD_AUTH_RATE_LIMIT`); excess requests get 429 with `Retry-After`.
     All errors are `{"error": "<message>"}`. Requests about an organisation the caller does
     not belong to answer 404, never 403, so organisation ids cannot be probed.
     Author: SecretHero.

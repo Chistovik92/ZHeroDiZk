@@ -1,0 +1,13 @@
+Package: zherodizk-control
+Version: @VERSION@
+Section: net
+Priority: optional
+Architecture: @ARCH@
+Depends: adduser
+Recommends: postgresql
+Maintainer: SecretHero <noreply@users.noreply.github.com>
+Homepage: https://github.com/Chistovik92/ZHeroDiZk
+Description: ZHeroDiZk control server
+ Accounts, multi-factor authentication, organisations, devices, access rules, audit log and
+ signed session grants, with a systemd unit. Needs PostgreSQL 16 and a TLS reverse proxy.
+ Development build: not a finished product.

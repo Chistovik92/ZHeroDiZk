@@ -37,6 +37,54 @@
       "path": "src/main.rs",
       "before": ".author(\"Purslane Ltd<info@rustdesk.com>\")",
       "after": ".author(\"SecretHero\")"
+    },
+    {
+      "path": "src/auth_2fa.rs",
+      "before": "const ISSUER: &str = \"RustDesk\";",
+      "after": "const ISSUER: &str = \"ZHeroDiZk\";"
+    },
+    {
+      "path": "src/whiteboard/linux.rs",
+      "before": ".with_title(\"RustDesk whiteboard\")",
+      "after": ".with_title(\"ZHeroDiZk whiteboard\")"
+    },
+    {
+      "path": "src/whiteboard/macos.rs",
+      "before": ".with_title(\"RustDesk whiteboard\")",
+      "after": ".with_title(\"ZHeroDiZk whiteboard\")"
+    },
+    {
+      "path": "src/whiteboard/windows.rs",
+      "before": ".with_title(\"RustDesk whiteboard\")",
+      "after": ".with_title(\"ZHeroDiZk whiteboard\")"
+    },
+    {
+      "path": "src/platform/windows.rs",
+      "before": "\"RustDesk Output\"",
+      "after": "\"ZHeroDiZk Output\""
+    },
+    {
+      "path": "src/server/uinput.rs",
+      "before": ".name(\"RustDesk UInput Keyboard\")",
+      "after": ".name(\"ZHeroDiZk UInput Keyboard\")"
+    },
+    {
+      "path": "src/main.rs",
+      "before": ".about(\"RustDesk command line tool\")",
+      "after": ".about(\"ZHeroDiZk command line tool\")"
+    },
+    {
+      "path": "flutter/lib/desktop/widgets/tabbar_widget.dart",
+      "before": "\"RustDesk\",",
+      "after": "\"ZHeroDiZk\","
+    }
+  ],
+  "files": [
+    {
+      "path": "flutter/assets/icon.svg",
+      "sha256_before": "4d6ecc2b45571382576049095435f41576c02e895b8766ef3f300623c35b3488",
+      "normalize_eol": true,
+      "source": "client/branding/icon.svg"
     }
   ]
 }
