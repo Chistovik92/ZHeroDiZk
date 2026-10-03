@@ -46,9 +46,9 @@ jobs:
       - name: Rust toolchain
         run: rustup toolchain install 1.90.0 --profile minimal --component clippy && rustup default 1.90.0
       - name: Tests (unit and PostgreSQL integration)
-        run: cargo test --locked -p zherodizk-control -- --nocapture
+        run: cargo test -p zherodizk-control -- --nocapture
       - name: Clippy
-        run: cargo clippy --locked -p zherodizk-control --all-targets -- -D warnings
+        run: cargo clippy -p zherodizk-control --all-targets -- -D warnings
       - name: Keep the resolved lock file for review
         if: always()
         uses: actions/upload-artifact@v4

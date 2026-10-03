@@ -40,6 +40,8 @@ pub enum ApiError {
     Conflict(&'static str),
     #[error("{0}")]
     Unavailable(&'static str),
+    #[error("{0}")]
+    NotFound(&'static str),
     #[error("internal error")]
     Internal,
 }
@@ -59,6 +61,7 @@ impl IntoResponse for ApiError {
             ApiError::Forbidden(_) => StatusCode::FORBIDDEN,
             ApiError::Conflict(_) => StatusCode::CONFLICT,
             ApiError::Unavailable(_) => StatusCode::SERVICE_UNAVAILABLE,
+            ApiError::NotFound(_) => StatusCode::NOT_FOUND,
             ApiError::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         };
         (status, Json(serde_json::json!({ "error": self.to_string() }))).into_response()

@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! ZHeroDiZk control server. Stage 0.4.2: configuration, database, health check and local
-//! accounts with sessions. There are no organisations, devices or remote-access rights yet.
+//! ZHeroDiZk control server. Stage 0.4.4: configuration, database, health check, local accounts
+//! with sessions and MFA, organisations and device enrolment. There are no remote-access
+//! rights yet: nothing here lets anyone connect to a device.
 
 pub mod auth;
 pub mod config;
 pub mod crypto;
+pub mod devices;
+pub mod orgs;
 pub mod password;
 pub mod totp;
 
@@ -70,6 +73,8 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/healthz", get(healthz))
         .merge(auth::routes())
+        .merge(orgs::routes())
+        .merge(devices::routes())
         .with_state(state)
 }
 
