@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/access-policy"]
+members = ["crates/access-policy", "crates/control"]
 resolver = "2"
 
 [workspace.package]
